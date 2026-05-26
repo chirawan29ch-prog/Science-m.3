@@ -1731,28 +1731,48 @@ function TeacherAirdrop({students,setPendingAirdrop}){
 // ─────────────────────────────────────────────
 
 // ─────────────────────────────────────────────
-// LOCAL STORAGE HELPERS
+// GOOGLE SHEETS API
 // ─────────────────────────────────────────────
-function loadLS(key, fallback){
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzcduKP3JZazDiKKRPNDonn2g87M7RWZm4wxG6IXgZ7UqcMTxtCIJC4yWv5WQRxhZhMFg/exec"; // ← ใส่ Web App URL ตรงนี้
+
+async function gasGet(){
   try{
-    const val = localStorage.getItem(key);
-    return val ? JSON.parse(val) : fallback;
-  }catch(e){ return fallback; }
+    const r = await fetch(GAS_URL + "?action=getAll");
+    return await r.json();
+  }catch(e){ return null; }
 }
-function saveLS(key, val){
-  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+async function gasSave(action, data){
+  try{
+    await fetch(GAS_URL, {
+      method:"POST",
+      body: JSON.stringify({action, data: JSON.stringify(data)})
+    });
+  }catch(e){}
 }
 
 export default function App(){
-  const [students,setStudents]=useState(()=>loadLS("pbg_students",INIT_STUDENTS));
-  const [assignments,setAssignments]=useState(()=>loadLS("pbg_assignments",INIT_ASSIGNMENTS));
-  const [resources,setResources]=useState(()=>loadLS("pbg_resources",INIT_RESOURCES));
+  const [students,setStudents]=useState(INIT_STUDENTS);
+  const [assignments,setAssignments]=useState(INIT_ASSIGNMENTS);
+  const [resources,setResources]=useState(INIT_RESOURCES);
   const [auth,setAuth]=useState(null);
 
-  // เซฟข้อมูลลง localStorage ทุกครั้งที่มีการเปลี่ยนแปลง
-  useEffect(()=>{ saveLS("pbg_students", students); },[students]);
-  useEffect(()=>{ saveLS("pbg_assignments", assignments); },[assignments]);
-  useEffect(()=>{ saveLS("pbg_resources", resources); },[resources]);
+  // โหลดข้อมูลจาก Google Sheets ตอนเริ่ม
+  const [loaded,setLoaded]=useState(false);
+  useEffect(()=>{
+    gasGet().then(data=>{
+      if(data){
+        if(data.students&&data.students.length>0) setStudents(data.students);
+        if(data.assignments&&data.assignments.length>0) setAssignments(data.assignments);
+        if(data.resources&&data.resources.length>0) setResources(data.resources);
+      }
+      setLoaded(true);
+    });
+  },[]);
+
+  // เซฟข้อมูลไป Google Sheets ทุกครั้งที่เปลี่ยน
+  useEffect(()=>{ if(loaded) gasSave("saveStudents", students); },[students]);
+  useEffect(()=>{ if(loaded) gasSave("saveAssignments", assignments); },[assignments]);
+  useEffect(()=>{ if(loaded) gasSave("saveResources", resources); },[resources]);
 
 
   const [page,setPage]=useState("dashboard");
