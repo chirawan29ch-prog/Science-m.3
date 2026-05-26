@@ -115,12 +115,7 @@ const INIT_ASSIGNMENTS = [
   {id:"A6",chapterId:"CH3",title:"ใบกิจกรรม 3.1: แรงลอยตัว",xp:350,due:"30 มิ.ย. 2568",desc:"หลักของอาร์คิมิดีส",type:"worksheet"},
   {id:"A7",chapterId:"CH3",title:"Lab 3.2: ของไหลและความดัน",xp:400,due:"5 ก.ค. 2568",desc:"Pascal & Bernoulli",type:"lab"},
 ];
-const INIT_RESOURCES = [
-  {id:"R1",chapterId:"CH1",title:"สไลด์บทที่ 1: ไฟฟ้าสถิตย์",type:"pdf",size:"2.4 MB",uploadedAt:"18 พ.ค. 2568"},
-  {id:"R2",chapterId:"CH1",title:"สรุปสูตรวงจรไฟฟ้า",type:"pdf",size:"0.8 MB",uploadedAt:"19 พ.ค. 2568"},
-  {id:"R3",chapterId:"CH2",title:"สไลด์บทที่ 2: ความร้อนและแก๊ส",type:"pdf",size:"3.1 MB",uploadedAt:"20 พ.ค. 2568"},
-  {id:"R4",chapterId:"CH3",title:"สไลด์บทที่ 3: ของแข็งและของไหล",type:"pdf",size:"2.7 MB",uploadedAt:"20 พ.ค. 2568"},
-];
+const INIT_RESOURCES = [];
 const INIT_STUDENTS = [
   {id:"s1", name:"นาย ศิวรัตน์ ปัทมผดุงศักดิ์", password:"18677", avatar:"👨‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null},
   {id:"s2", name:"นางสาว สุธาสินี แสงปลาย",      password:"18583", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null},
@@ -760,37 +755,33 @@ function StudentAssignments({student,assignments,setStudents}){
 // STUDENT: RESOURCES
 // ─────────────────────────────────────────────
 function StudentResources({resources}){
-  const ti={pdf:"📄",ppt:"📊",doc:"📝",img:"🖼️",zip:"📦"};
+  const ti={pdf:"📄",ppt:"📊",doc:"📝",img:"🖼️",zip:"📦",link:"🔗"};
   return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
-      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>KNOWLEDGE BASE</div>
-      {CHAPTERS.map(ch=>{
-        const chR=resources.filter(r=>r.chapterId===ch.id);
-        return(
-          <div key={ch.id} style={{marginBottom:28}}>
-            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${ch.color}30`}}>
-              <span style={{fontSize:24}}>{ch.icon}</span>
-              <div className="cond" style={{fontSize:22,fontWeight:700,color:ch.color}}>{ch.title}</div>
-              <span className="badge" style={{background:`${ch.color}18`,border:`1px solid ${ch.color}44`,color:ch.color}}>{chR.length} ไฟล์</span>
-            </div>
-            {chR.length===0?<div style={{color:"var(--muted)",fontSize:13}}>ยังไม่มีไฟล์</div>
-            :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
-              {chR.map(r=>(
-                <div key={r.id} className="card card-hover" style={{borderColor:`${ch.color}22`}}>
-                  <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                    <div style={{fontSize:36}}>{ti[r.type]||"📄"}</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:600,color:"#fff",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.title}</div>
-                      <div style={{fontSize:11,color:"var(--muted)"}}>{r.size} · {r.uploadedAt}</div>
-                    </div>
-                  </div>
-                  <button className="btn btn-cyan" style={{width:"100%",marginTop:12,padding:"8px 0",fontSize:12}} onClick={()=>alert("⬇ ดาวน์โหลด: "+r.title)}>⬇ ดาวน์โหลด</button>
-                </div>
-              ))}
-            </div>}
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>📚 เนื้อหาและสไลด์</div>
+      {CHAPTERS.map(ch=>{const chR=resources.filter(r=>r.chapterId===ch.id);return(
+        <div key={ch.id} style={{marginBottom:24}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${ch.color}30`}}>
+            <span style={{fontSize:20}}>{ch.icon}</span>
+            <div className="cond" style={{fontSize:20,fontWeight:700,color:ch.color}}>{ch.title}</div>
+            <span className="badge" style={{background:`${ch.color}18`,border:`1px solid ${ch.color}44`,color:ch.color}}>{chR.length} ไฟล์</span>
           </div>
-        );
-      })}
+          {chR.length===0&&<div style={{color:"var(--muted)",fontSize:13,padding:"10px 0"}}>ยังไม่มีไฟล์ในบทนี้</div>}
+          {chR.map(r=>(
+            <div key={r.id} className="card card-hover" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:`${ch.color}22`}}>
+              <div style={{fontSize:28}}>{ti[r.type]||"📄"}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{r.title}</div>
+                <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{r.uploadedAt}</div>
+              </div>
+              {r.link
+                ?<a href={r.link} target="_blank" rel="noreferrer" className="btn btn-cyan" style={{padding:"8px 18px",fontSize:13,textDecoration:"none"}}>📂 เปิดไฟล์</a>
+                :<span style={{fontSize:12,color:"var(--muted)"}}>ไม่มีลิงก์</span>
+              }
+            </div>
+          ))}
+        </div>
+      );})}
     </div>
   );
 }
@@ -1368,45 +1359,44 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
 // ─────────────────────────────────────────────
 function TeacherResources({resources,setResources}){
   const [modal,setModal]=useState(false);
-  const [form,setForm]=useState({chapterId:"CH1",title:"",type:"pdf",size:""});
-  const [fileName,setFileName]=useState("");
-  const inputRef=useRef<any>(null);
-  function handleFile(e){const f=e.target.files[0];if(f){setFileName(f.name);setForm(p=>({...p,size:`${(f.size/1024/1024).toFixed(1)} MB`,title:p.title||f.name}));}}
+  const [form,setForm]=useState({chapterId:"CH1",title:"",type:"pdf",link:""});
   function save(){
-    if(!form.title.trim()&&!fileName)return;
+    if(!form.title.trim())return;
     const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
     setResources(prev=>[...prev,{...form,id:"R"+Date.now(),uploadedAt:today}]);
-    setModal(false);setFileName("");setForm({chapterId:"CH1",title:"",type:"pdf",size:""});
+    setModal(false);setForm({chapterId:"CH1",title:"",type:"pdf",link:""});
   }
   function del(id){if(window.confirm("ลบไฟล์นี้?"))setResources(prev=>prev.filter(r=>r.id!==id));}
-  const ti={pdf:"📄",ppt:"📊",doc:"📝",img:"🖼️",zip:"📦"};
+  const ti={pdf:"📄",ppt:"📊",doc:"📝",img:"🖼️",zip:"📦",link:"🔗"};
   return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
       {modal&&(
         <div className="overlay">
           <div className="card card-gold" style={{width:"100%",maxWidth:480}}>
-            <div className="cond" style={{fontSize:24,color:"var(--gold)",letterSpacing:2,marginBottom:20}}>📁 อัปโหลดไฟล์ความรู้</div>
-            <div style={{marginBottom:14}}><label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>บทเรียน</label>
+            <div className="cond" style={{fontSize:24,color:"var(--gold)",letterSpacing:2,marginBottom:20}}>📁 เพิ่มไฟล์ความรู้</div>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>บทเรียน</label>
               <select className="input" value={form.chapterId} onChange={e=>setForm(p=>({...p,chapterId:e.target.value}))}>
                 {CHAPTERS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.title}</option>)}
               </select>
             </div>
-            <div style={{marginBottom:14}}><label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>ชื่อไฟล์ / สไลด์</label>
-              <input className="input" value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="ชื่อไฟล์"/>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>ชื่อไฟล์ / สไลด์</label>
+              <input className="input" value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="เช่น สไลด์บทที่ 1"/>
             </div>
-            <div style={{marginBottom:14}}><label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>ประเภทไฟล์</label>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>ประเภทไฟล์</label>
               <select className="input" value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))}>
                 {Object.entries(ti).map(([k,v])=><option key={k} value={k}>{v} {k.toUpperCase()}</option>)}
               </select>
             </div>
-            <div style={{border:"2px dashed var(--border2)",borderRadius:8,padding:22,textAlign:"center",cursor:"pointer",background:"rgba(14,26,43,.5)",marginBottom:20}} onClick={()=>inputRef.current?.click()}>
-              <div style={{fontSize:32,marginBottom:6}}>📁</div>
-              <div style={{color:fileName?"var(--gold)":"var(--muted2)",fontSize:13,fontWeight:fileName?600:400}}>{fileName||"คลิกเพื่อเลือกไฟล์"}</div>
-              <div style={{color:"var(--muted)",fontSize:11,marginTop:4}}>PDF, PPT, Word, รูปภาพ</div>
+            <div style={{marginBottom:20}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>🔗 Google Drive Link</label>
+              <input className="input" value={form.link} onChange={e=>setForm(p=>({...p,link:e.target.value}))} placeholder="https://drive.google.com/..."/>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:5}}>💡 เปิด Google Drive → คลิกขวาไฟล์ → "Get link" → วางที่นี่</div>
             </div>
-            <input ref={inputRef} type="file" style={{display:"none"}} onChange={handleFile}/>
             <div style={{display:"flex",gap:10}}>
-              <button className="btn btn-gold" onClick={save} style={{flex:1,fontSize:15,padding:13}}>⬆ อัปโหลด</button>
+              <button className="btn btn-gold" onClick={save} style={{flex:1,fontSize:15,padding:13}}>✅ บันทึก</button>
               <button className="btn-outline" onClick={()=>setModal(false)} style={{flex:1}}>ยกเลิก</button>
             </div>
           </div>
@@ -1417,9 +1407,12 @@ function TeacherResources({resources,setResources}){
           <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3}}>KNOWLEDGE FILES</div>
           <div className="cond" style={{fontSize:22,color:"var(--text)",marginTop:2}}>{resources.length} ไฟล์ทั้งหมด</div>
         </div>
-        <button className="btn btn-gold" onClick={()=>setModal(true)} style={{fontSize:18,padding:"14px 32px",display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:22}}>⬆</span> อัปโหลดไฟล์ใหม่
+        <button className="btn btn-gold" onClick={()=>setModal(true)} style={{fontSize:15,padding:"12px 24px",display:"flex",alignItems:"center",gap:8}}>
+          <span>➕</span> เพิ่มไฟล์ใหม่
         </button>
+      </div>
+      <div style={{background:"rgba(212,168,67,.08)",border:"1px solid rgba(212,168,67,.25)",borderRadius:8,padding:"10px 16px",marginBottom:16,fontSize:12,color:"var(--gold2)"}}>
+        💡 ใส่ลิงก์ Google Drive เพื่อให้นักเรียนเปิดไฟล์ได้เลย ไม่ต้องอัปโหลดไฟล์จริง
       </div>
       {CHAPTERS.map(ch=>{const chR=resources.filter(r=>r.chapterId===ch.id);return(
         <div key={ch.id} style={{marginBottom:24}}>
@@ -1428,11 +1421,15 @@ function TeacherResources({resources,setResources}){
             <div className="cond" style={{fontSize:20,fontWeight:700,color:ch.color}}>{ch.title}</div>
             <span className="badge" style={{background:`${ch.color}18`,border:`1px solid ${ch.color}44`,color:ch.color}}>{chR.length} ไฟล์</span>
           </div>
-          {chR.length===0&&<div style={{color:"var(--muted)",fontSize:13}}>ยังไม่มีไฟล์</div>}
+          {chR.length===0&&<div style={{color:"var(--muted)",fontSize:13}}>ยังไม่มีไฟล์ — กด "เพิ่มไฟล์ใหม่" เพื่อเพิ่มครับ</div>}
           {chR.map(r=>(
             <div key={r.id} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:`${ch.color}22`}}>
               <div style={{fontSize:28}}>{ti[r.type]||"📄"}</div>
-              <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{r.title}</div><div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{r.size} · {r.uploadedAt}</div></div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{r.title}</div>
+                <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{r.uploadedAt}</div>
+                {r.link&&<a href={r.link} target="_blank" rel="noreferrer" style={{fontSize:11,color:"var(--cyan)",marginTop:2,display:"block"}}>🔗 เปิดไฟล์</a>}
+              </div>
               <button className="btn btn-red" onClick={()=>del(r.id)} style={{padding:"7px 14px",fontSize:13}}>🗑 ลบ</button>
             </div>
           ))}
