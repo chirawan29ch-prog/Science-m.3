@@ -1729,11 +1729,32 @@ function TeacherAirdrop({students,setPendingAirdrop}){
 // ─────────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// LOCAL STORAGE HELPERS
+// ─────────────────────────────────────────────
+function loadLS(key, fallback){
+  try{
+    const val = localStorage.getItem(key);
+    return val ? JSON.parse(val) : fallback;
+  }catch(e){ return fallback; }
+}
+function saveLS(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+}
+
 export default function App(){
-  const [students,setStudents]=useState(INIT_STUDENTS);
-  const [assignments,setAssignments]=useState(INIT_ASSIGNMENTS);
-  const [resources,setResources]=useState(INIT_RESOURCES);
+  const [students,setStudents]=useState(()=>loadLS("pbg_students",INIT_STUDENTS));
+  const [assignments,setAssignments]=useState(()=>loadLS("pbg_assignments",INIT_ASSIGNMENTS));
+  const [resources,setResources]=useState(()=>loadLS("pbg_resources",INIT_RESOURCES));
   const [auth,setAuth]=useState(null);
+
+  // เซฟข้อมูลลง localStorage ทุกครั้งที่มีการเปลี่ยนแปลง
+  useEffect(()=>{ saveLS("pbg_students", students); },[students]);
+  useEffect(()=>{ saveLS("pbg_assignments", assignments); },[assignments]);
+  useEffect(()=>{ saveLS("pbg_resources", resources); },[resources]);
+
+
   const [page,setPage]=useState("dashboard");
   const [pendingAirdrop,setPendingAirdrop]=useState(null);
   const [activePopup,setActivePopup]=useState(null);
