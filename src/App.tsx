@@ -73,14 +73,14 @@ const CHAPTERS = [
 
 // ← เกรดแบบ 0/1/1.5/2/2.5/3/3.5/4
 const XP_RANKS = [
-  {minXP:2000,label:"DIAMOND",     grade:"A",  gpa:"4.0",color:"#a8d8ff",icon:"💎",desc:"ดีเยี่ยม"},
-  {minXP:1875,label:"PLATINUM",    grade:"B+", gpa:"3.5",color:"#e0ccff",icon:"🔮",desc:"ดีมาก"},
-  {minXP:1750,label:"GOLD",        grade:"B",  gpa:"3.0",color:"#f0c060",icon:"🥇",desc:"ดี"},
-  {minXP:1625,label:"SILVER I",    grade:"C+", gpa:"2.5",color:"#c8ddf0",icon:"🥈",desc:"ค่อนข้างดี"},
-  {minXP:1500,label:"SILVER II",   grade:"C",  gpa:"2.0",color:"#b0cce0",icon:"🥈",desc:"พอใช้"},
-  {minXP:1375,label:"BRONZE I",    grade:"D+", gpa:"1.5",color:"#ffb86a",icon:"🥉",desc:"อ่อน"},
-  {minXP:1250,label:"BRONZE II",   grade:"D",  gpa:"1.0",color:"#ff9840",icon:"🥉",desc:"อ่อนมาก"},
-  {minXP:0,   label:"IRON",        grade:"F",  gpa:"0.0",color:"#8090a8",icon:"⚙️",desc:"ไม่ผ่าน"},
+  {minXP:2000,maxXP:2500,label:"DIAMOND",  grade:"4",  color:"#a8d8ff",icon:"💎",desc:"ดีเยี่ยม",  scoreRange:"80–100"},
+  {minXP:1875,maxXP:1999,label:"PLATINUM", grade:"3.5",color:"#e0ccff",icon:"🔮",desc:"ดีมาก",     scoreRange:"75–79"},
+  {minXP:1750,maxXP:1874,label:"GOLD",     grade:"3",  color:"#f0c060",icon:"🥇",desc:"ดี",         scoreRange:"70–74"},
+  {minXP:1625,maxXP:1749,label:"SILVER I", grade:"2.5",color:"#c8ddf0",icon:"🥈",desc:"ค่อนข้างดี",scoreRange:"65–69"},
+  {minXP:1500,maxXP:1624,label:"SILVER II",grade:"2",  color:"#b0cce0",icon:"🥈",desc:"พอใช้",     scoreRange:"60–64"},
+  {minXP:1375,maxXP:1499,label:"BRONZE I", grade:"1.5",color:"#ffb86a",icon:"🥉",desc:"อ่อน",      scoreRange:"55–59"},
+  {minXP:1250,maxXP:1374,label:"BRONZE II",grade:"1",  color:"#ff9840",icon:"🥉",desc:"อ่อนมาก",   scoreRange:"50–54"},
+  {minXP:0,   maxXP:1249,label:"IRON",     grade:"0",  color:"#8090a8",icon:"⚙️",desc:"ไม่ผ่าน",   scoreRange:"0–49"},
 ];
 const MAX_XP = 2500;
 
@@ -343,15 +343,15 @@ function GradeTable(){
         </div>
       </div>
       <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:14}}>📊 เกณฑ์ XP → เกรด</div>
-      <div style={{display:"grid",gridTemplateColumns:"1.6fr .9fr .7fr .7fr .9fr",gap:1,background:"var(--border)"}}>
-        {["RANK","XP MIN","คะแนน","เกรด","สถานะ"].map(h=>(
+      <div style={{display:"grid",gridTemplateColumns:"1.4fr 1.2fr 1fr .5fr .8fr",gap:1,background:"var(--border)"}}>
+        {["RANK","XP","คะแนน","เกรด","สถานะ"].map(h=>(
           <div key={h} style={{background:"var(--bg3)",padding:"7px 10px",fontSize:11,color:"var(--muted2)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1}}>{h}</div>
         ))}
         {XP_RANKS.map(r=>[
           <div key={r.label+"a"} style={{background:"var(--bg2)",padding:"7px 10px",fontSize:12,display:"flex",gap:6,alignItems:"center"}}><span>{r.icon}</span><span style={{color:r.color,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{r.label}</span></div>,
-          <div key={r.label+"b"} style={{background:"var(--bg2)",padding:"7px 10px",fontFamily:"'Share Tech Mono',monospace",fontSize:12,color:"var(--text)"}}>{r.minXP.toLocaleString()}</div>,
-          <div key={r.label+"c"} style={{background:"var(--bg2)",padding:"7px 10px",fontFamily:"'Share Tech Mono',monospace",fontSize:16,fontWeight:700,color:r.color}}>{r.grade}</div>,
-          <div key={r.label+"d"} style={{background:"var(--bg2)",padding:"7px 10px",fontFamily:"'Share Tech Mono',monospace",fontSize:12,color:"var(--muted2)"}}>{r.minXP>0?Math.round(r.minXP/25)+"+":"0–49"}</div>,
+          <div key={r.label+"b"} style={{background:"var(--bg2)",padding:"7px 10px",fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:"var(--text)"}}>{r.minXP.toLocaleString()}–{r.maxXP.toLocaleString()}</div>,
+          <div key={r.label+"c"} style={{background:"var(--bg2)",padding:"7px 10px",fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:"var(--muted2)"}}>{r.scoreRange}</div>,
+          <div key={r.label+"d"} style={{background:"var(--bg2)",padding:"7px 10px",fontFamily:"'Share Tech Mono',monospace",fontSize:16,fontWeight:700,color:r.color}}>{r.grade}</div>,
           <div key={r.label+"e"} style={{background:"var(--bg2)",padding:"7px 10px",fontSize:12,color:"var(--muted2)"}}>{r.desc}</div>,
         ])}
       </div>
@@ -652,8 +652,7 @@ function StudentDashboard({student,students,assignments,setPage,setStudents}){
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
-        <GradeChart students={students}/>
-      <Top3Card students={students}/>
+        <Top3Card students={students}/>
         <div>
           <div className="card" style={{marginBottom:10,textAlign:"center",padding:14}}>
             <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:6}}>YOUR XP</div>
@@ -1086,7 +1085,6 @@ function TeacherOverview({students,assignments,setPage}){
         ))}
       </div>
 
-      <GradeChart students={students}/>
       <Top3Card students={students}/>
       <div className="card">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
