@@ -117,23 +117,14 @@ const INIT_ASSIGNMENTS = [
 ];
 const INIT_RESOURCES = [];
 const INIT_STUDENTS = [
-  {id:"s1",  name:"นาย พรเทพ ฉิมสวัสดิ์",       password:"18721", avatar:"👨‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s2",  name:"นาย ศรัณย์ อินทร์ศรี",        password:"18728", avatar:"👨‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s3",  name:"นาย ภาวสุทธิ์ สุกรี",         password:"19129", avatar:"👨‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s4",  name:"นาย รัฐฐกรณ์ ชมชิด",          password:"19144", avatar:"👨‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s5",  name:"นางสาว จันทร์ศุธา โพธิ์ล่าม", password:"18738", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s6",  name:"นางสาว อริสรา พรายยงค์",      password:"18751", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s7",  name:"นางสาว ชุตินันท์ ดุสิต",      password:"19130", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s8",  name:"นางสาว ณัฐนิชา บุญวัดโพธิ์",  password:"19205", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s9",  name:"นาย ศิวกร บุญภา",             password:"18795", avatar:"👨‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s10", name:"นางสาว มณีนุช อาสาเสนีย์",    password:"18745", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s11", name:"นางสาว บุญรักษา คำพล",        password:"18740", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s12", name:"นางสาว ศิริพร ปันท่าเรือ",    password:"18747", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s13", name:"นางสาว สิริธร บัวสำเริง",     password:"18749", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s14", name:"นางสาว ผลิตา ศรีกุตา",        password:"19219", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s15", name:"นางสาว อัญชลี เกิดอำแพง",     password:"18797", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s16", name:"นางสาว ขวัญพิชชา สำรวมจิต",   password:"19124", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
-  {id:"s17", name:"นางสาว พิชชานันท์ แก้วบุบผา", password:"19126", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
+  {id:"s1", name:"นาย ศิวรัตน์ ปัทมผดุงศักดิ์", password:"18677", avatar:"👨‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
+  {id:"s2", name:"นางสาว สุธาสินี แสงปลาย",      password:"18583", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
+  {id:"s3", name:"นางสาว พิมพ์ชนก กลิ่นระรื่น",  password:"18607", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
+  {id:"s4", name:"นางสาว วรินรำไพ ทินภา",         password:"18608", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
+  {id:"s5", name:"นางสาว วริศรา อุ่นใจ",          password:"18609", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
+  {id:"s6", name:"นางสาว อริสา กานยะคามิน",       password:"18613", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
+  {id:"s7", name:"นางสาว คันธารัตน์ ยอดหล้า",     password:"18646", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
+  {id:"s8", name:"นางสาว สุดที่รัก รู้เจน",       password:"18804", avatar:"👩‍🎓", xp:0, submissions:{}, inventory:[], midterm:null, final:null, xpLog:[]},
 ];
 
 // ─────────────────────────────────────────────
