@@ -65,10 +65,9 @@ select.input option{background:#1e3454}
 // CONSTANTS
 // ─────────────────────────────────────────────
 const CHAPTERS = [
-  {id:"CH1",label:"บทที่ 1",title:"การเคลื่อนที่แบบฮาร์มอนิกอย่างง่าย",icon:"🔄",color:"#4ecaae",bg:"rgba(78,202,174,.06)"},
-  {id:"CH2",label:"บทที่ 2",title:"คลื่น",icon:"🌊",color:"#e88c4a",bg:"rgba(232,140,74,.06)"},
-  {id:"CH3",label:"บทที่ 3",title:"แสงเชิงคลื่น",icon:"✨",color:"#aa8ff0",bg:"rgba(170,143,240,.06)"},
-  {id:"CH4",label:"บทที่ 4",title:"แสงเชิงรังสี",icon:"☀️",color:"#f5cc70",bg:"rgba(245,204,112,.06)"},
+  {id:"CH1",label:"บทที่ 1",title:"แม่เหล็กและไฟฟ้า",icon:"⚡",color:"#4ecaae",bg:"rgba(78,202,174,.06)"},
+  {id:"CH2",label:"บทที่ 2",title:"ความร้อนและแก๊ส",icon:"🔥",color:"#e88c4a",bg:"rgba(232,140,74,.06)"},
+  {id:"CH3",label:"บทที่ 3",title:"ของแข็งและของไหล",icon:"💧",color:"#aa8ff0",bg:"rgba(170,143,240,.06)"},
 ];
 
 const XP_RANKS = [
@@ -106,14 +105,13 @@ function getRank(xp){return XP_RANKS.find(r=>xp>=r.minXP)||XP_RANKS[XP_RANKS.len
 // MOCK DATA
 // ─────────────────────────────────────────────
 const INIT_ASSIGNMENTS = [
-  {id:"A1",chapterId:"CH1",title:"ใบกิจกรรม 1.1: การเคลื่อนที่แบบ SHM",xp:300,due:"30 พ.ค. 2568",desc:"คำนวณคาบและความถี่",type:"worksheet",createdAt:"20 พ.ค. 2568"},
-  {id:"A2",chapterId:"CH1",title:"แบบทดสอบ 1.2: พลังงานใน SHM",xp:400,due:"5 มิ.ย. 2568",desc:"30 ข้อ multiple choice",type:"quiz",createdAt:"20 พ.ค. 2568"},
-  {id:"A3",chapterId:"CH2",title:"ใบกิจกรรม 2.1: สมบัติของคลื่น",xp:300,due:"12 มิ.ย. 2568",desc:"การสะท้อน หักเห เลี้ยวเบน",type:"worksheet",createdAt:"21 พ.ค. 2568"},
-  {id:"A4",chapterId:"CH2",title:"แบบทดสอบ 2.2: คลื่นเสียง",xp:400,due:"18 มิ.ย. 2568",desc:"30 ข้อ multiple choice",type:"quiz",createdAt:"21 พ.ค. 2568"},
-  {id:"A5",chapterId:"CH3",title:"ใบกิจกรรม 3.1: การแทรกสอดของแสง",xp:350,due:"24 มิ.ย. 2568",desc:"Young's double slit",type:"worksheet",createdAt:"22 พ.ค. 2568"},
-  {id:"A6",chapterId:"CH3",title:"Lab 3.2: การเลี้ยวเบนของแสง",xp:400,due:"30 มิ.ย. 2568",desc:"ทดลองกับ diffraction grating",type:"lab",createdAt:"22 พ.ค. 2568"},
-  {id:"A7",chapterId:"CH4",title:"ใบกิจกรรม 4.1: กฎของสเนลล์",xp:300,due:"5 ก.ค. 2568",desc:"การหักเหของแสง",type:"worksheet",createdAt:"23 พ.ค. 2568"},
-  {id:"A8",chapterId:"CH4",title:"แบบทดสอบ 4.2: เลนส์และกระจก",xp:400,due:"10 ก.ค. 2568",desc:"30 ข้อ multiple choice",type:"quiz",createdAt:"23 พ.ค. 2568"},
+  {id:"A1",chapterId:"CH1",title:"ใบกิจกรรม 1.1: กฎของโอห์ม",xp:300,due:"30 พ.ค. 2568",desc:"คำนวณแรงดัน กระแส ความต้านทาน",type:"worksheet",createdAt:"20 พ.ค. 2568"},
+  {id:"A2",chapterId:"CH1",title:"แบบทดสอบ 1.2: วงจรไฟฟ้า",xp:400,due:"5 มิ.ย. 2568",desc:"30 ข้อ multiple choice",type:"quiz",createdAt:"20 พ.ค. 2568"},
+  {id:"A3",chapterId:"CH1",title:"Lab 1.3: แม่เหล็กไฟฟ้า",xp:350,due:"12 มิ.ย. 2568",desc:"ทดลองสนามแม่เหล็ก",type:"lab",createdAt:"20 พ.ค. 2568"},
+  {id:"A4",chapterId:"CH2",title:"ใบกิจกรรม 2.1: กฎของแก๊ส",xp:300,due:"18 มิ.ย. 2568",desc:"Boyle's & Charles' Law",type:"worksheet",createdAt:"21 พ.ค. 2568"},
+  {id:"A5",chapterId:"CH2",title:"แบบทดสอบ 2.2: อุณหพลศาสตร์",xp:400,due:"24 มิ.ย. 2568",desc:"30 ข้อ multiple choice",type:"quiz",createdAt:"21 พ.ค. 2568"},
+  {id:"A6",chapterId:"CH3",title:"ใบกิจกรรม 3.1: แรงลอยตัว",xp:350,due:"30 มิ.ย. 2568",desc:"หลักของอาร์คิมิดีส",type:"worksheet",createdAt:"22 พ.ค. 2568"},
+  {id:"A7",chapterId:"CH3",title:"Lab 3.2: ของไหลและความดัน",xp:400,due:"5 ก.ค. 2568",desc:"Pascal & Bernoulli",type:"lab",createdAt:"22 พ.ค. 2568"},
 ];
 const INIT_RESOURCES = [];
 const INIT_STUDENTS = [
