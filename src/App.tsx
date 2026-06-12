@@ -286,7 +286,7 @@ function Top3Card({students}){
             border:`1px solid ${i===0?"rgba(232,188,85,.4)":"var(--border)"}`,borderRadius:8}}>
             <div style={{fontSize:24}}>{medals[i]}</div>
             <div style={{fontSize:30,margin:"4px 0"}}>{s.avatar}</div>
-            <div style={{fontSize:12,color:"#fff",fontWeight:600,lineHeight:1.3}}>{s.name.split(" ").slice(-1)[0]}</div>
+            <div style={{fontSize:12,color:"#fff",fontWeight:600,lineHeight:1.3}}>{s.name.split(" ").slice(1).join(" ")}</div>
             <div className="mono" style={{fontSize:16,fontWeight:700,color:mc[i],marginTop:4}}>{s.xp.toLocaleString()}</div>
             <div style={{fontSize:10,color:"var(--muted)"}}>XP</div>
             <div className="badge" style={{marginTop:8,background:`${r.color}20`,border:`1px solid ${r.color}50`,color:r.color,fontSize:9,lineHeight:1.5}}>{r.icon} {r.label}</div>
@@ -673,11 +673,18 @@ function StudentAssignments({student,assignments,setStudents}){
     if(!uploadModal)return;
     if(!driveLink.trim()){return;}
     const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
-    setStudents(prev=>prev.map(s=>s.id===student.id?{...s,xp:s.xp+(uploadModal.xp||0),submissions:{...s.submissions,[uploadModal.id]:{file:driveLink,submittedAt:today,xpEarned:uploadModal.xp}}}:s));
+    // XP = 0 ก่อน จนกว่าครูจะตรวจและให้คะแนน
+    setStudents(prev=>prev.map(s=>s.id===student.id?{...s,submissions:{...s.submissions,[uploadModal.id]:{file:driveLink,submittedAt:today,xpEarned:0,maxXp:uploadModal.xp,graded:false}}}:s));
     setUploadModal(null);
   }
   function removeSubmission(id){
-    setStudents(prev=>prev.map(s=>{if(s.id!==student.id)return s;const sub=s.submissions[id];const{[id]:_,...rest}=s.submissions;return{...s,xp:s.xp-(sub?.xpEarned||0),submissions:rest};}));
+    setStudents(prev=>prev.map(s=>{
+      if(s.id!==student.id)return s;
+      const sub=s.submissions[id];
+      const{[id]:_,...rest}=s.submissions;
+      // หักคะแนนเฉพาะที่ครูตรวจแล้วเท่านั้น
+      return{...s,xp:s.xp-(sub?.graded?sub.xpEarned||0:0),submissions:rest};
+    }));
   }
   function replaceFile(id){removeSubmission(id);const a=assignments.find(x=>x.id===id);if(a)setUploadModal(a);}
   return(
@@ -726,8 +733,12 @@ function StudentAssignments({student,assignments,setStudents}){
                     </div>
                     <div style={{fontSize:14,fontWeight:600,color:"#fff",marginBottom:4}}>{a.title}</div>
                     <div style={{fontSize:12,color:"var(--muted)"}}>{a.desc} · ครบกำหนด {a.due}</div>
-                    {sub&&<div style={{fontSize:12,color:"var(--cyan)",marginTop:4}}>
-                      🔗 <a href={sub.file} target="_blank" rel="noreferrer" style={{color:"var(--cyan)"}}>ดูไฟล์งาน</a> · {sub.submittedAt}
+                    {sub&&<div style={{fontSize:12,marginTop:4}}>
+                      <a href={sub.file} target="_blank" rel="noreferrer" style={{color:"var(--cyan)"}}>🔗 ดูไฟล์งาน</a>
+                      <span style={{color:"var(--muted)"}}> · {sub.submittedAt}</span>
+                      <span style={{marginLeft:8,color:sub.graded?"var(--gold)":"var(--muted)",fontFamily:"'Share Tech Mono',monospace",fontSize:11}}>
+                        {sub.graded?`⭐ ${sub.xpEarned} / ${sub.maxXp||a.xp} XP`:"⏳ รอครูตรวจ"}
+                      </span>
                     </div>}
                   </div>
                   <div style={{textAlign:"center",flexShrink:0}}><div className="mono" style={{fontSize:14,color:"var(--gold)",fontWeight:700}}>+{a.xp}</div><div style={{fontSize:10,color:"var(--muted)"}}>XP</div></div>
@@ -1162,8 +1173,10 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
       if(s.id!==studentId)return s;
       const sub=s.submissions?.[a.id];
       if(!sub)return s;
-      const diff=newXp-(sub.xpEarned||0);
-      return{...s,xp:s.xp+diff,submissions:{...s.submissions,[a.id]:{...sub,xpEarned:newXp}}};
+      const wasGraded=sub.graded||false;
+      const oldXp=wasGraded?(sub.xpEarned||0):0;
+      const diff=newXp-oldXp;
+      return{...s,xp:s.xp+diff,submissions:{...s.submissions,[a.id]:{...sub,xpEarned:newXp,graded:true,maxXp:sub.maxXp||a.xp}}};
     }));
   }
 
@@ -1380,11 +1393,240 @@ function TeacherResources({resources,setResources}){
 }
 
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 // TEACHER: XP MANAGEMENT (อัปเกรด)
 // ─────────────────────────────────────────────
 function TeacherScores({students,setStudents}){
-  const [tab,setTab]=useState("add"); // "add" | "summary"
-  const [targetMode,setTargetMode]=useState("single"); // "single" | "all"
+  const [tab,setTab]=useState("add");
+  const [targetMode,setTargetMode]=useState("single"); // "single" | "multi" | "all"
+  const [selStu,setSelStu]=useState("");
+  const [selMulti,setSelMulti]=useState([]); // หลายคน
+  const [xpAmt,setXpAmt]=useState("");
+  const [activityName,setActivityName]=useState("");
+  const [msg,setMsg]=useState(null);
+
+  function toast(t,isErr=false){setMsg({text:t,err:isErr});setTimeout(()=>setMsg(null),3500);}
+
+  function toggleMulti(id){
+    setSelMulti(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
+  }
+
+  function doAdd(){
+    if(!xpAmt||Number(xpAmt)<=0){toast("กรุณาใส่จำนวน XP",true);return;}
+    if(!activityName.trim()){toast("กรุณาใส่ชื่องาน/กิจกรรม",true);return;}
+    if(targetMode==="single"&&!selStu){toast("กรุณาเลือกนักเรียน",true);return;}
+    if(targetMode==="multi"&&selMulti.length===0){toast("กรุณาเลือกนักเรียนอย่างน้อย 1 คน",true);return;}
+    const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
+    const logEntry={activity:activityName.trim(),xp:Number(xpAmt),date:today};
+    if(targetMode==="all"){
+      setStudents(prev=>prev.map(s=>({...s,xp:s.xp+Number(xpAmt),xpLog:[...(s.xpLog||[]),logEntry]})));
+      toast(`✅ เพิ่ม ${xpAmt} XP จาก "${activityName}" ให้ทุกคน ${students.length} คน!`);
+    } else if(targetMode==="multi"){
+      setStudents(prev=>prev.map(s=>selMulti.includes(s.id)?{...s,xp:s.xp+Number(xpAmt),xpLog:[...(s.xpLog||[]),logEntry]}:s));
+      toast(`✅ เพิ่ม ${xpAmt} XP จาก "${activityName}" ให้ ${selMulti.length} คน!`);
+      setSelMulti([]);
+    } else {
+      const name=students.find(s=>s.id===selStu)?.name||"";
+      setStudents(prev=>prev.map(s=>s.id===selStu?{...s,xp:s.xp+Number(xpAmt),xpLog:[...(s.xpLog||[]),logEntry]}:s));
+      toast(`✅ เพิ่ม ${xpAmt} XP จาก "${activityName}" ให้ ${name}!`);
+    }
+    setXpAmt("");setActivityName("");setSelStu("");
+  }
+
+  const allActivities=useMemo(()=>{
+    const map={};
+    students.forEach(s=>{
+      (s.xpLog||[]).forEach(log=>{
+        if(!map[log.activity])map[log.activity]={name:log.activity,entries:{}};
+        map[log.activity].entries[s.id]={xp:log.xp,date:log.date};
+      });
+    });
+    return Object.values(map);
+  },[students]);
+
+  const tabStyle=(t)=>({
+    background:tab===t?"rgba(232,188,85,.12)":"transparent",
+    border:"none",borderBottom:tab===t?"2px solid var(--gold)":"2px solid transparent",
+    color:tab===t?"var(--gold2)":"var(--muted2)",
+    padding:"10px 22px",cursor:"pointer",
+    fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,
+    transition:"all .2s"
+  });
+
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:960,margin:"0 auto"}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:16}}>XP MANAGEMENT</div>
+      <div style={{display:"flex",borderBottom:"1px solid var(--border)",marginBottom:20}}>
+        <button style={tabStyle("add")} onClick={()=>setTab("add")}>⭐ เพิ่ม XP</button>
+        <button style={tabStyle("summary")} onClick={()=>setTab("summary")}>📊 สรุปรายงาน</button>
+      </div>
+      {msg&&<div style={{background:msg.err?"rgba(232,96,96,.14)":"rgba(94,200,126,.14)",
+        border:`1px solid ${msg.err?"rgba(232,96,96,.4)":"rgba(94,200,126,.4)"}`,
+        borderRadius:7,padding:"13px 18px",color:msg.err?"var(--red)":"var(--green)",
+        fontSize:14,marginBottom:16,textAlign:"center"}}>{msg.text}</div>}
+
+      {tab==="add"&&(
+        <>
+          <div className="card card-gold" style={{marginBottom:20}}>
+            <div className="cond" style={{fontSize:22,color:"var(--gold)",letterSpacing:2,marginBottom:18}}>⭐ เพิ่ม XP จากกิจกรรม</div>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ชื่องาน / กิจกรรม</label>
+              <input className="input" value={activityName} onChange={e=>setActivityName(e.target.value)}
+                placeholder="เช่น แบบทดสอบบทที่ 1, ใบงาน 2.3, ตอบคำถามในชั้นเรียน"/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>จำนวน XP</label>
+                <input className="input" type="number" value={xpAmt} onChange={e=>setXpAmt(e.target.value)} placeholder="เช่น 200"/>
+              </div>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ให้คะแนน</label>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                  {[["single","👤 รายบุคคล"],["multi","☑️ เลือกหลายคน"],["all","👥 ทั้งห้อง"]].map(([m,l])=>(
+                    <button key={m} onClick={()=>{setTargetMode(m);setSelStu("");setSelMulti([]);}} className="btn"
+                      style={{background:targetMode===m?"rgba(232,188,85,.18)":"rgba(255,255,255,.05)",
+                        border:`1px solid ${targetMode===m?"rgba(232,188,85,.6)":"var(--border)"}`,
+                        color:targetMode===m?"var(--gold)":"var(--muted2)",
+                        borderRadius:6,padding:"10px 6px",fontSize:12,
+                        fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:.5}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* เลือกรายบุคคล */}
+            {targetMode==="single"&&(
+              <div style={{marginBottom:16}}>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>เลือกนักเรียน</label>
+                <select className="input" value={selStu} onChange={e=>setSelStu(e.target.value)}>
+                  <option value="">-- เลือกนักเรียน --</option>
+                  {students.map(s=><option key={s.id} value={s.id}>{s.avatar} {s.name} · {s.xp.toLocaleString()} XP</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* เลือกหลายคน */}
+            {targetMode==="multi"&&(
+              <div style={{marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2}}>เลือกนักเรียน ({selMulti.length} คน)</label>
+                  <div style={{display:"flex",gap:8}}>
+                    <button className="btn-ghost" onClick={()=>setSelMulti(students.map(s=>s.id))} style={{fontSize:11,padding:"4px 12px"}}>เลือกทั้งหมด</button>
+                    <button className="btn-ghost" onClick={()=>setSelMulti([])} style={{fontSize:11,padding:"4px 12px"}}>ล้าง</button>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:6,maxHeight:260,overflowY:"auto",padding:4}}>
+                  {students.map(s=>{
+                    const selected=selMulti.includes(s.id);
+                    return(
+                      <div key={s.id} onClick={()=>toggleMulti(s.id)}
+                        style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",
+                          background:selected?"rgba(232,188,85,.15)":"rgba(255,255,255,.04)",
+                          border:`1px solid ${selected?"rgba(232,188,85,.5)":"var(--border)"}`,
+                          borderRadius:7,cursor:"pointer",transition:"all .15s"}}>
+                        <div style={{width:18,height:18,borderRadius:4,
+                          background:selected?"var(--gold)":"transparent",
+                          border:`2px solid ${selected?"var(--gold)":"var(--muted)"}`,
+                          display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                          {selected&&<span style={{fontSize:12,color:"#000",lineHeight:1}}>✓</span>}
+                        </div>
+                        <span style={{fontSize:18,flexShrink:0}}>{s.avatar}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,color:selected?"var(--gold)":"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</div>
+                          <div className="mono" style={{fontSize:10,color:"var(--muted)"}}>{s.xp.toLocaleString()} XP</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {targetMode==="all"&&(
+              <div style={{background:"rgba(94,200,126,.08)",border:"1px solid rgba(94,200,126,.3)",
+                borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"var(--green)"}}>
+                👥 จะเพิ่ม XP ให้นักเรียนทั้งหมด <strong>{students.length} คน</strong> พร้อมกัน
+              </div>
+            )}
+
+            <button className="btn btn-gold" onClick={doAdd}
+              style={{width:"100%",fontSize:17,padding:"15px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+              <span>➕</span>
+              {targetMode==="all"?`เพิ่ม XP ให้ทุกคน (${students.length} คน)`:
+               targetMode==="multi"?`เพิ่ม XP ให้ ${selMulti.length} คนที่เลือก`:
+               "เพิ่ม XP"}
+            </button>
+          </div>
+
+          <div className="card">
+            <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:14}}>XP ทุกนักเรียน</div>
+            {[...students].sort((a,b)=>b.xp-a.xp).map((s,i)=>{const r=getRank(s.xp);return(
+              <div key={s.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>
+                <span style={{width:28,textAlign:"center",fontSize:14,color:"var(--muted)"}}>{i+1}</span>
+                <span style={{fontSize:28}}>{s.avatar}</span>
+                <span style={{flex:1,fontSize:14}}>{s.name}</span>
+                <div style={{width:110}}><XPBar xp={s.xp} showLabel={false}/></div>
+                <div className="mono" style={{width:70,textAlign:"right",color:r.color}}>{s.xp.toLocaleString()}</div>
+                <GradeTag xp={s.xp}/>
+              </div>
+            );})}
+          </div>
+        </>
+      )}
+
+      {tab==="summary"&&(
+        <div>
+          {allActivities.length===0?(
+            <div className="card" style={{textAlign:"center",padding:48}}>
+              <div style={{fontSize:40,marginBottom:12}}>📊</div>
+              <div className="cond" style={{fontSize:20,color:"var(--muted)"}}>ยังไม่มีการให้คะแนน</div>
+            </div>
+          ):(
+            allActivities.map((act,ai)=>{
+              const sortedStudents=[...students].sort((a,b)=>b.xp-a.xp);
+              const totalGiven=Object.values(act.entries).reduce((s,e)=>s+(e.xp||0),0);
+              const receivedCount=Object.keys(act.entries).length;
+              return(
+                <div key={ai} className="card" style={{marginBottom:16,borderColor:"rgba(232,188,85,.35)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
+                    <div>
+                      <div className="cond" style={{fontSize:20,fontWeight:700,color:"var(--gold2)"}}>{act.name}</div>
+                      <div style={{display:"flex",gap:8,marginTop:6}}>
+                        <span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ ได้รับ {receivedCount} คน</span>
+                        <span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.28)",color:"var(--red)"}}>— ยังไม่ได้ {students.length-receivedCount} คน</span>
+                        <span className="mono" style={{fontSize:11,color:"var(--gold)",padding:"3px 8px"}}>รวม {totalGiven.toLocaleString()} XP</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
+                    {sortedStudents.map(s=>{
+                      const entry=act.entries[s.id];
+                      return(
+                        <div key={s.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",
+                          background:entry?"rgba(94,200,126,.07)":"rgba(232,96,96,.05)",
+                          border:`1px solid ${entry?"rgba(94,200,126,.25)":"rgba(232,96,96,.15)"}`,
+                          borderRadius:7}}>
+                          <span style={{fontSize:20,flexShrink:0}}>{s.avatar}</span>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:12,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name.split(" ").slice(1).join(" ")}</div>
+                            {entry?<div className="mono" style={{fontSize:13,color:"var(--gold)",fontWeight:700}}>+{entry.xp} XP</div>
+                                  :<div style={{fontSize:11,color:"var(--muted)"}}>ยังไม่ได้รับ</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
   const [selStu,setSelStu]=useState("");
   const [xpAmt,setXpAmt]=useState("");
   const [activityName,setActivityName]=useState("");
@@ -1574,7 +1816,7 @@ function TeacherScores({students,setStudents}){
                           borderRadius:7}}>
                           <span style={{fontSize:20,flexShrink:0}}>{s.avatar}</span>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:12,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name.split(" ").slice(-1)[0]}</div>
+                            <div style={{fontSize:12,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name.split(" ").slice(1).join(" ")}</div>
                             {entry
                               ?<div className="mono" style={{fontSize:13,color:"var(--gold)",fontWeight:700}}>+{entry.xp} XP</div>
                               :<div style={{fontSize:11,color:"var(--muted)"}}>ยังไม่ได้รับ</div>}
