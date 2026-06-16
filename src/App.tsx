@@ -22,6 +22,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans Thai',sans-se
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
 @keyframes glow{0%,100%{box-shadow:0 0 8px var(--gold)}50%{box-shadow:0 0 24px var(--gold)}}
+@keyframes glowPulse{0%,100%{opacity:1;transform:translateY(-50%) scale(1)}50%{opacity:.75;transform:translateY(-50%) scale(1.2)}}
 @keyframes airIn{0%{transform:translateY(-50px) scale(.6);opacity:0}65%{transform:translateY(6px) scale(1.06)}100%{transform:translateY(0) scale(1);opacity:1}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
@@ -220,20 +221,49 @@ function VeniceBackground(){
 // ─────────────────────────────────────────────
 // MINI COMPONENTS
 // ─────────────────────────────────────────────
-function XPBar({xp,maxXP=MAX_XP,color="#f5cc70",showLabel=true}){
+const RANK_BAR_COLORS:Record<string,{fill:string,glow:string,next:string}> = {
+  "IRON":      {fill:"linear-gradient(90deg,#4a5568,#718096,#a0aec0)", glow:"#9aacbf", next:"#ffb86a"},
+  "BRONZE II": {fill:"linear-gradient(90deg,#7b3a10,#c05a20,#e07a40)", glow:"#e07a40", next:"#ffb86a"},
+  "BRONZE I":  {fill:"linear-gradient(90deg,#a04a10,#ff9840,#ffcc80)", glow:"#ff9840", next:"#c8ddf0"},
+  "SILVER II": {fill:"linear-gradient(90deg,#4a6a8a,#8ab0d0,#c8ddf0)", glow:"#c8ddf0", next:"#c8ddf0"},
+  "SILVER I":  {fill:"linear-gradient(90deg,#5a7a9a,#9ac0e0,#d8eaf8)", glow:"#d8eaf8", next:"#f5cc70"},
+  "GOLD":      {fill:"linear-gradient(90deg,#c8902a,#f5cc70,#ffe89a)", glow:"#f5cc70", next:"#e0ccff"},
+  "PLATINUM":  {fill:"linear-gradient(90deg,#5a3a9a,#9a7ae0,#c8aaff)", glow:"#c8aaff", next:"#a8d8ff"},
+  "DIAMOND":   {fill:"linear-gradient(90deg,#1a4a8a,#5aaee8,#a8d8ff)", glow:"#a8d8ff", next:"#a8d8ff"},
+};
+
+function XPBar({xp,maxXP=MAX_XP,showLabel=true}){
   const pct=Math.min(100,(xp/maxXP)*100);
   const rank=getRank(xp);
+  const rc=RANK_BAR_COLORS[rank.label]||RANK_BAR_COLORS["IRON"];
+  const nextRank=XP_RANKS.slice().reverse().find(r=>r.minXP>xp);
   return(
     <div>
       {showLabel&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontSize:12}}>
         <span style={{color:"var(--muted2)"}}>{rank.label}</span>
-        <span className="mono" style={{color}}>{xp.toLocaleString()} / {maxXP.toLocaleString()} XP</span>
+        <span className="mono" style={{color:rc.glow}}>{xp.toLocaleString()} / {maxXP.toLocaleString()} XP</span>
       </div>}
-      <div style={{height:10,background:"rgba(14,26,43,.8)",borderRadius:5,overflow:"hidden",border:"1px solid var(--border)"}}>
-        <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${color}55,${color})`,transition:"width 1s ease",borderRadius:5,position:"relative"}}>
-          <div style={{position:"absolute",right:0,top:0,width:3,height:"100%",background:"rgba(255,255,255,.65)",boxShadow:`0 0 6px ${color}`}}/>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        {showLabel&&<div className="mono" style={{fontSize:10,color:rank.color,minWidth:14}}>{rank.icon}</div>}
+        <div style={{flex:1,position:"relative"}}>
+          <div style={{height:14,background:"rgba(14,26,43,.9)",borderRadius:7,overflow:"visible",border:"1px solid rgba(212,168,67,.18)",position:"relative"}}>
+            <div style={{width:`${pct}%`,height:"100%",background:rc.fill,borderRadius:7,transition:"width 1.2s ease",minWidth:pct>0?14:0,position:"relative"}}>
+              <div style={{position:"absolute",right:-7,top:"50%",transform:"translateY(-50%)",
+                width:18,height:18,borderRadius:"50%",
+                background:`radial-gradient(circle,#fff 0%,${rc.glow} 35%,${rc.glow}44 60%,transparent 75%)`,
+                boxShadow:`0 0 10px 4px ${rc.glow}99,0 0 22px 8px ${rc.glow}44`,
+                animation:"glowPulse 1.6s ease-in-out infinite",zIndex:2}}/>
+            </div>
+            {XP_RANKS.slice().reverse().map(r=>(
+              <div key={r.minXP} style={{position:"absolute",left:`${(r.minXP/maxXP)*100}%`,top:-2,width:1,height:18,background:"rgba(255,255,255,.15)"}}/>
+            ))}
+          </div>
         </div>
+        {showLabel&&<div className="mono" style={{fontSize:10,color:nextRank?.color||rc.next,minWidth:14}}>{nextRank?.icon||"🏁"}</div>}
       </div>
+      {showLabel&&nextRank&&<div style={{textAlign:"right",fontSize:10,color:"var(--muted)",marginTop:3}}>
+        อีก <span style={{color:rc.glow,fontWeight:700}}>{(nextRank.minXP-xp).toLocaleString()} XP</span> → {nextRank.label}
+      </div>}
     </div>
   );
 }
@@ -327,25 +357,171 @@ function GradeTable(){
 // ─────────────────────────────────────────────
 // AIRDROP POPUP
 // ─────────────────────────────────────────────
-function AirdropPopup({airdrop,onClaim}){
-  useEffect(()=>{playAirdropSound();},[]);
+function useAirdropParticles(){
+  const canvasRef=useRef<HTMLCanvasElement>(null);
+  const ptsRef=useRef<any[]>([]);
+  const rafRef=useRef<any>(null);
+  function burst(color:string,n=70){
+    const c=canvasRef.current;if(!c)return;
+    const cx=c.width/2,cy=c.height/2;
+    for(let i=0;i<n;i++){
+      const p:any={x:cx,y:cy,c:i%4===0?"#ffffff":i%7===0?"#ffe89a":color,
+        vx:(Math.random()-.5)*16,vy:(Math.random()-.5)*16-8,
+        life:1,r:Math.random()*7+3,g:.38,rot:Math.random()*6.28,
+        rs:(Math.random()-.5)*.28,star:Math.random()<.45};
+      ptsRef.current.push(p);
+    }
+    cancelAnimationFrame(rafRef.current);
+    function anim(){
+      const cv=canvasRef.current;if(!cv)return;
+      const ctx=cv.getContext("2d")!;
+      ctx.clearRect(0,0,cv.width,cv.height);
+      ptsRef.current=ptsRef.current.filter(p=>p.life>0);
+      ptsRef.current.forEach(p=>{
+        p.x+=p.vx;p.y+=p.vy;p.vy+=p.g;p.vx*=.97;p.life-=.019;p.rot+=p.rs;
+        if(p.life<=0)return;
+        ctx.save();ctx.globalAlpha=Math.max(0,p.life);
+        ctx.shadowBlur=12;ctx.shadowColor=p.c;ctx.fillStyle=p.c;
+        ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+        if(p.star){
+          ctx.beginPath();
+          for(let i=0;i<10;i++){const r2=i%2?p.r*.4:p.r,a=i*Math.PI/5-Math.PI/2;i?ctx.lineTo(r2*Math.cos(a),r2*Math.sin(a)):ctx.moveTo(r2*Math.cos(a),r2*Math.sin(a));}
+          ctx.closePath();ctx.fill();
+        }else{ctx.beginPath();ctx.arc(0,0,p.r/2,0,6.28);ctx.fill();}
+        ctx.restore();
+      });
+      if(ptsRef.current.length>0)rafRef.current=requestAnimationFrame(anim);
+    }
+    anim();
+  }
+  return{canvasRef,burst};
+}
+
+function playAirdropFX(rarity:string){
+  try{
+    const AC=(window as any).AudioContext||(window as any).webkitAudioContext;
+    const ac=new AC();
+    const freqs=rarity==="LEGENDARY"?[523,659,784,988,1047,1319]:
+                rarity==="EPIC"?[440,554,659,880,1047]:
+                rarity==="RARE"?[392,494,587,784]:[330,415,494];
+    freqs.forEach((f:number,i:number)=>{
+      const o=ac.createOscillator(),g=ac.createGain();
+      o.connect(g);g.connect(ac.destination);
+      o.frequency.value=f;
+      o.type=rarity==="LEGENDARY"?"sawtooth":rarity==="EPIC"?"square":"sine";
+      const t=ac.currentTime+i*.1;
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3,t+.06);g.gain.exponentialRampToValueAtTime(.001,t+.55);
+      o.start(t);o.stop(t+.55);
+    });
+    if(rarity==="LEGENDARY"){
+      const n=ac.createOscillator(),ng=ac.createGain();
+      n.type="sawtooth";n.frequency.value=55;n.connect(ng);ng.connect(ac.destination);
+      ng.gain.setValueAtTime(.15,ac.currentTime);ng.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.5);
+      n.start(ac.currentTime);n.stop(ac.currentTime+.5);
+    }
+  }catch(e){}
+}
+
+function AirdropPendingBanner({airdrop,onOpen}:{airdrop:any,onOpen:()=>void}){
   return(
-    <div className="overlay" style={{zIndex:2000}}>
-      <div className="air-in" style={{textAlign:"center",maxWidth:380,width:"100%"}}>
-        <div style={{position:"relative",display:"inline-block",marginBottom:16}}>
-          {Array.from({length:8},(_,i)=>(
-            <div key={i} style={{position:"absolute",top:"50%",left:"50%",width:2,height:80,
-              background:`linear-gradient(to top,${airdrop.color},transparent)`,
-              transform:`rotate(${i*45}deg) translateY(-100%)`,transformOrigin:"0 0",opacity:.5}}/>
-          ))}
-          <div style={{fontSize:84,position:"relative",zIndex:1,filter:`drop-shadow(0 0 30px ${airdrop.color})`}}>{airdrop.icon}</div>
-        </div>
-        <div className="cond" style={{fontSize:13,color:"var(--muted2)",letterSpacing:4,marginBottom:4}}>📦 AIRDROP INCOMING!</div>
-        <div className="cond" style={{fontSize:38,fontWeight:900,color:airdrop.color,marginBottom:8,textShadow:`0 0 28px ${airdrop.color}`}}>{airdrop.name}</div>
-        <div className="badge" style={{background:`${airdrop.color}20`,border:`1px solid ${airdrop.color}60`,color:airdrop.color,fontSize:13,padding:"5px 14px",marginBottom:16}}>★ {airdrop.rarity}</div>
-        {airdrop.note&&<div style={{color:"var(--muted2)",fontSize:14,fontStyle:"italic",marginBottom:16}}>"{airdrop.note}"</div>}
-        <button className="btn btn-gold" onClick={onClaim} style={{fontSize:18,padding:"14px 48px",animation:"glow 2s ease-in-out infinite"}}>✅ รับรางวัล</button>
+    <div style={{position:"fixed",top:54,left:0,right:0,zIndex:500,
+      background:"linear-gradient(90deg,rgba(232,188,85,.12),rgba(232,188,85,.25),rgba(232,188,85,.12))",
+      borderBottom:"1px solid rgba(232,188,85,.45)",
+      padding:"10px 20px",display:"flex",alignItems:"center",gap:14}}>
+      <div style={{fontSize:28,animation:"shake 1s ease-in-out infinite"}}>📦</div>
+      <div style={{flex:1}}>
+        <div style={{fontSize:14,fontWeight:600,color:"var(--gold2)"}}>มี Airdrop รอคุณอยู่!</div>
+        <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>ครูส่งรางวัลให้คุณ กดเปิดเพื่อรับ</div>
       </div>
+      <button className="btn btn-gold" onClick={onOpen} style={{padding:"8px 20px",fontSize:14,animation:"glow 2s ease-in-out infinite"}}>📦 เปิด!</button>
+    </div>
+  );
+}
+
+function AirdropPopup({airdrop,onClaim}:{airdrop:any,onClaim:()=>void}){
+  const {canvasRef,burst}=useAirdropParticles();
+  const [show,setShow]=useState(false);
+  const [flashOpacity,setFlashOpacity]=useState(0);
+  const overlayRef=useRef<HTMLDivElement>(null);
+
+  useEffect(()=>{
+    playAirdropFX(airdrop.rarity||"COMMON");
+    // flash
+    setFlashOpacity(.6);
+    setTimeout(()=>setFlashOpacity(0),150);
+    // burst x2
+    setTimeout(()=>burst(airdrop.color||"#f5cc70",airdrop.rarity==="LEGENDARY"?110:airdrop.rarity==="EPIC"?85:60),100);
+    setTimeout(()=>setShow(true),180);
+    if(airdrop.rarity==="LEGENDARY"||airdrop.rarity==="EPIC"){
+      setTimeout(()=>{burst(airdrop.color||"#f5cc70",60);setFlashOpacity(.4);setTimeout(()=>setFlashOpacity(0),120);},750);
+    }
+    // resize canvas
+    const el=overlayRef.current;
+    if(el){const c=canvasRef.current;if(c){c.width=el.offsetWidth;c.height=el.offsetHeight;}}
+  },[]);
+
+  const c=airdrop.color||"#f5cc70";
+  const rays=Array.from({length:14},(_,i)=>i);
+
+  return(
+    <div className="overlay" style={{zIndex:2000}} ref={overlayRef}>
+      {/* canvas particles */}
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:1,width:"100%",height:"100%"}}/>
+      {/* flash */}
+      <div style={{position:"absolute",inset:0,background:"#fff",opacity:flashOpacity,transition:"opacity .4s",pointerEvents:"none",zIndex:2}}/>
+      {/* card */}
+      <div style={{position:"relative",zIndex:3,textAlign:"center",maxWidth:380,width:"100%",
+        transform:show?"translateY(0) scale(1)":"translateY(-40px) scale(.6)",
+        opacity:show?1:0,transition:"transform .6s cubic-bezier(.34,1.56,.64,1),opacity .4s"}}>
+        {/* icon + rings + rays */}
+        <div style={{position:"relative",display:"inline-block",marginBottom:16,width:130,height:130}}>
+          {[0,1].map(i=>(
+            <div key={i} style={{position:"absolute",inset:0,borderRadius:"50%",
+              border:`2px solid ${c}`,opacity:0,
+              animation:`routr 1.2s ease-out ${i*.45}s infinite`}}/>
+          ))}
+          <div style={{position:"absolute",inset:-28,zIndex:0}}>
+            {rays.map(i=>(
+              <div key={i} style={{position:"absolute",top:"50%",left:"50%",width:2,height:0,
+                background:`linear-gradient(to right,transparent,${c})`,
+                borderRadius:1,transformOrigin:"0 50%",
+                transform:`rotate(${i*25.7}deg) translateY(-50%)`,
+                animation:`rout .7s ease-out ${i*.035}s forwards`}}/>
+            ))}
+          </div>
+          <div style={{fontSize:86,lineHeight:"130px",position:"relative",zIndex:1,
+            animation:`iconGlow 2s ease-in-out infinite`,
+            filter:`drop-shadow(0 0 20px ${c})`}}>{airdrop.icon}</div>
+        </div>
+        <div className="cond" style={{fontSize:12,color:"var(--muted2)",letterSpacing:4,marginBottom:6,
+          opacity:show?1:0,transform:show?"translateY(0)":"translateY(8px)",transition:"all .3s .3s"}}>
+          📦 AIRDROP INCOMING!
+        </div>
+        <div className="cond" style={{fontSize:36,fontWeight:900,color:c,marginBottom:8,
+          textShadow:`0 0 28px ${c}`,
+          opacity:show?1:0,transform:show?"translateY(0)":"translateY(10px)",transition:"all .3s .45s"}}>
+          {airdrop.name}
+        </div>
+        <div className="badge" style={{background:`${c}20`,border:`1px solid ${c}60`,color:c,
+          fontSize:13,padding:"5px 14px",marginBottom:10,display:"inline-block",
+          opacity:show?1:0,transform:show?"translateY(0)":"translateY(8px)",transition:"all .3s .55s"}}>
+          ★ {airdrop.rarity}
+        </div>
+        {airdrop.note&&<div style={{color:"var(--muted2)",fontSize:14,fontStyle:"italic",marginBottom:14,
+          opacity:show?1:0,transition:"opacity .3s .6s"}}>"{airdrop.note}"</div>}
+        <br/>
+        <button className="btn btn-gold" onClick={()=>{
+          burst(c,90);setFlashOpacity(.5);setTimeout(()=>setFlashOpacity(0),120);
+          setTimeout(onClaim,400);
+        }} style={{fontSize:18,padding:"14px 48px",animation:"glow 2s ease-in-out infinite",
+          opacity:show?1:0,transition:"opacity .3s .7s"}}>✅ รับรางวัล</button>
+      </div>
+      <style>{`
+        @keyframes routr{0%{transform:scale(.4);opacity:.9}100%{transform:scale(2.2);opacity:0}}
+        @keyframes rout{0%{opacity:1;height:0;margin-top:0}70%{opacity:.7;height:55px;margin-top:-27px}100%{opacity:0;height:75px;margin-top:-37px}}
+        @keyframes iconGlow{0%,100%{filter:drop-shadow(0 0 12px ${c})}50%{filter:drop-shadow(0 0 32px ${c}) drop-shadow(0 0 64px ${c})}}
+        @keyframes shake{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+      `}</style>
     </div>
   );
 }
@@ -753,12 +929,50 @@ function StudentAssignments({student,assignments,setStudents}){
           </div>
         );
       })}
+      {/* ── กิจกรรมในห้องเรียน ── */}
+      {(student.xpLog||[]).length>0&&(
+        <div style={{marginBottom:28}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12,paddingBottom:10,borderBottom:"1px solid rgba(170,143,240,.35)"}}>
+            <span style={{fontSize:24}}>🏫</span>
+            <div>
+              <div className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:2}}>CLASSROOM ACTIVITIES</div>
+              <div className="cond" style={{fontSize:22,fontWeight:700,color:"#aa8ff0"}}>กิจกรรมในห้องเรียน</div>
+            </div>
+            <span className="badge" style={{background:"rgba(170,143,240,.2)",border:"1px solid rgba(170,143,240,.4)",color:"#aa8ff0"}}>{(student.xpLog||[]).length} กิจกรรม</span>
+          </div>
+          {[...(student.xpLog||[])].reverse().map((log,i)=>(
+            <div key={i} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:"rgba(170,143,240,.3)"}}>
+              <div style={{fontSize:26}}>⭐</div>
+              <div style={{flex:1}}>
+                <span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)",marginBottom:4,display:"inline-block"}}>✓ ได้รับแล้ว</span>
+                <div style={{fontSize:14,fontWeight:600,color:"#fff",marginTop:4}}>{log.activity}</div>
+                <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{log.date}</div>
+              </div>
+              <div className="mono" style={{fontSize:18,fontWeight:700,color:"var(--gold)"}}>+{log.xp} XP</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {/* ── XP รวมทั้งหมด ── */}
+      {(()=>{
+        const xpFromSubs=Object.values(student.submissions||{}).reduce((s:number,sub:any)=>s+(sub?.graded?sub.xpEarned||0:0),0);
+        const xpFromLog=(student.xpLog||[]).reduce((s:number,l:any)=>s+l.xp,0);
+        const total=xpFromSubs+xpFromLog;
+        if(total===0)return null;
+        return(
+          <div style={{padding:"14px 18px",background:"rgba(232,188,85,.08)",border:"1px solid rgba(232,188,85,.3)",
+            borderRadius:10,display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8,marginBottom:20}}>
+            <div>
+              <div style={{fontSize:13,color:"var(--muted2)"}}>XP รวมทั้งหมด</div>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>งานส่ง {xpFromSubs.toLocaleString()} + กิจกรรม {xpFromLog.toLocaleString()} XP</div>
+            </div>
+            <div className="mono" style={{fontSize:24,fontWeight:700,color:"var(--gold2)"}}>{total.toLocaleString()} XP</div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
-
-// ─────────────────────────────────────────────
-// STUDENT: RESOURCES
 // ─────────────────────────────────────────────
 function StudentResources({resources}){
   const ti={pdf:"📄",ppt:"📊",doc:"📝",img:"🖼️",zip:"📦",link:"🔗"};
@@ -1096,9 +1310,12 @@ function TeacherOverview({students,assignments,setPage}){
 // ─────────────────────────────────────────────
 // TEACHER: STUDENTS
 // ─────────────────────────────────────────────
-function TeacherStudents({students,assignments}){
+function TeacherStudents({students,assignments,setStudents}){
   const [sel,setSel]=useState(null);
   const s=sel?students.find(x=>x.id===sel):null;
+  function removeAirdrop(studentId,idx){
+    setStudents(prev=>prev.map(s=>s.id===studentId?{...s,inventory:s.inventory.filter((_,i)=>i!==idx)}:s));
+  }
   if(s)return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
       <button className="btn-outline" onClick={()=>setSel(null)} style={{marginBottom:20}}>← กลับ</button>
@@ -1111,7 +1328,7 @@ function TeacherStudents({students,assignments}){
         <div style={{marginTop:16}}><XPBar xp={s.xp}/></div>
         <div style={{marginTop:10}}><ProgressFlag xp={s.xp}/></div>
       </div>
-      <div className="card">
+      <div className="card" style={{marginBottom:16}}>
         <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:14}}>SUBMISSION STATUS</div>
         {assignments.map(a=>{const sub=s.submissions?.[a.id];const tm=TYPE_META[a.type]||{};return(
           <div key={a.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>
@@ -1122,8 +1339,23 @@ function TeacherStudents({students,assignments}){
               <span className="badge" style={{background:"rgba(94,200,126,.12)",border:"1px solid rgba(94,200,126,.35)",color:"var(--green)"}}>✓ ส่งแล้ว</span>
             </>:<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.25)",color:"var(--red)"}}>⏳ ยังไม่ส่ง</span>}
           </div>
-        );})}
-      </div>
+        );})}</div>
+      {s.inventory&&s.inventory.length>0&&(
+        <div className="card" style={{borderColor:"rgba(170,143,240,.35)"}}>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:14}}>📦 AIRDROP INVENTORY ({s.inventory.length} ชิ้น)</div>
+          {s.inventory.map((item:any,idx:number)=>(
+            <div key={idx} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>
+              <span style={{fontSize:24}}>{item.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:600,color:item.color||"#fff"}}>{item.name}</div>
+                <div style={{fontSize:11,color:"var(--muted)"}}>{item.rarity} · {item.receivedAt}</div>
+                {item.note&&<div style={{fontSize:11,color:"var(--muted2)",fontStyle:"italic"}}>"{item.note}"</div>}
+              </div>
+              <button className="btn btn-red" onClick={()=>{if(window.confirm(`ลบ "${item.name}" ของ ${s.name}?`))removeAirdrop(s.id,idx);}} style={{padding:"6px 12px",fontSize:12}}>🗑 ลบ</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
   return(
@@ -1902,14 +2134,25 @@ export default function App(){
   const [page,setPage]=useState("dashboard");
   const [pendingAirdrop,setPendingAirdrop]=useState(null);
   const [activePopup,setActivePopup]=useState(null);
+  const [loginPending,setLoginPending]=useState<any>(null);
 
-  function handleLogin(role,userId){setAuth({role,userId});setPage(role==="teacher"?"overview":"dashboard");}
-  function handleLogout(){setAuth(null);}
+  function handleLogin(role,userId){
+    setAuth({role,userId});
+    setPage(role==="teacher"?"overview":"dashboard");
+    if(role==="student"){
+      const s=students.find((x:any)=>x.id===userId);
+      if(s&&s.inventory&&s.inventory.length>0){
+        const unseen=(s.inventory as any[]).filter((it:any)=>!it.seen);
+        if(unseen.length>0)setLoginPending(unseen[unseen.length-1]);
+      }
+    }
+  }
+  function handleLogout(){setAuth(null);setLoginPending(null);}
 
   useEffect(()=>{
     if(!pendingAirdrop)return;
-    const{targetStudentId,...item}=pendingAirdrop;
-    setStudents(prev=>prev.map(s=>s.id===targetStudentId?{...s,inventory:[...s.inventory,item]}:s));
+    const{targetStudentId,...item}=pendingAirdrop as any;
+    setStudents(prev=>prev.map(s=>s.id===targetStudentId?{...s,inventory:[...s.inventory,{...item,seen:false}]}:s));
     if(auth?.role==="student"&&auth?.userId===targetStudentId)setActivePopup({...item});
     setPendingAirdrop(null);
   },[pendingAirdrop]);
@@ -1924,7 +2167,27 @@ export default function App(){
     <>
       <style>{G}</style>
       <VeniceBackground/>
-      {activePopup&&role==="student"&&<AirdropPopup airdrop={activePopup} onClaim={()=>setActivePopup(null)}/>}
+      {activePopup&&role==="student"&&<AirdropPopup airdrop={activePopup} onClaim={()=>{
+        setStudents(prev=>prev.map(s=>s.id===userId?{...s,inventory:s.inventory.map((it:any)=>it.name===activePopup.name?{...it,seen:true}:it)}:s));
+        setActivePopup(null);
+      }}/>}
+      {loginPending&&role==="student"&&!activePopup&&(
+        <div style={{position:"fixed",top:60,left:0,right:0,zIndex:500,padding:"0 16px"}}>
+          <div style={{maxWidth:700,margin:"0 auto",background:"linear-gradient(90deg,rgba(232,188,85,.12),rgba(232,188,85,.22),rgba(232,188,85,.12))",
+            border:"1px solid rgba(232,188,85,.45)",borderRadius:10,padding:"12px 18px",
+            display:"flex",alignItems:"center",gap:14,backdropFilter:"blur(8px)"}}>
+            <div style={{fontSize:28,animation:"shake 1s ease-in-out infinite"}}>📦</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:14,fontWeight:600,color:"var(--gold)"}}>มี Airdrop รอคุณอยู่!</div>
+              <div style={{fontSize:12,color:"var(--muted2)",marginTop:2}}>ครูส่งรางวัลให้คุณ กดเปิดได้เลย</div>
+            </div>
+            <button className="btn btn-gold" onClick={()=>{setActivePopup(loginPending);setLoginPending(null);}}
+              style={{fontSize:13,padding:"8px 20px"}}>📦 เปิด!</button>
+            <button className="btn-ghost" onClick={()=>setLoginPending(null)}
+              style={{fontSize:11,padding:"6px 10px"}}>✕</button>
+          </div>
+        </div>
+      )}
       <div style={{position:"relative",zIndex:1,minHeight:"100vh"}}>
         <TopNav user={navUser} role={role} page={page} setPage={setPage} onLogout={handleLogout}/>
         <main>
@@ -1936,7 +2199,7 @@ export default function App(){
           {role==="student"&&page==="inventory"    &&currentStudent&&<StudentInventory student={currentStudent}/>}
           {role==="student"&&page==="settings"     &&currentStudent&&<StudentSettings student={currentStudent} setStudents={setStudents}/>}
           {role==="teacher"&&page==="overview"     &&<TeacherOverview students={students} assignments={assignments} setPage={setPage}/>}
-          {role==="teacher"&&page==="students"     &&<TeacherStudents students={students} assignments={assignments}/>}
+          {role==="teacher"&&page==="students"     &&<TeacherStudents students={students} assignments={assignments} setStudents={setStudents}/>}
           {role==="teacher"&&page==="t-assignments"&&<TeacherAssignments assignments={assignments} setAssignments={setAssignments} students={students} setStudents={setStudents}/>}
           {role==="teacher"&&page==="t-resources"  &&<TeacherResources resources={resources} setResources={setResources}/>}
           {role==="teacher"&&page==="t-scores"     &&<TeacherScores students={students} setStudents={setStudents}/>}
