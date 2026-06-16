@@ -66,9 +66,9 @@ select.input option{background:#1e3454}
 // CONSTANTS
 // ─────────────────────────────────────────────
 const CHAPTERS = [
-  {id:"CH1",label:"บทที่ 1",title:"แม่เหล็กและไฟฟ้า",icon:"⚡",color:"#4ecaae",bg:"rgba(78,202,174,.06)"},
-  {id:"CH2",label:"บทที่ 2",title:"ความร้อนและแก๊ส",icon:"🔥",color:"#e88c4a",bg:"rgba(232,140,74,.06)"},
-  {id:"CH3",label:"บทที่ 3",title:"ของแข็งและของไหล",icon:"💧",color:"#aa8ff0",bg:"rgba(170,143,240,.06)"},
+  {id:"CH1",label:"บทที่ 15",title:"แม่เหล็กและไฟฟ้า",icon:"⚡",color:"#4ecaae",bg:"rgba(78,202,174,.06)"},
+  {id:"CH2",label:"บทที่ 16",title:"ความร้อนและแก๊ส",icon:"🔥",color:"#e88c4a",bg:"rgba(232,140,74,.06)"},
+  {id:"CH3",label:"บทที่ 17",title:"ของแข็งและของไหล",icon:"💧",color:"#aa8ff0",bg:"rgba(170,143,240,.06)"},
 ];
 
 const XP_RANKS = [
@@ -889,66 +889,102 @@ function StudentAssignments({student,assignments,setStudents}){
       )}
       <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>MISSION BOARD — {assignments.length} OBJECTIVES</div>
       {CHAPTERS.map(ch=>{
-        const chA=assignments.filter(a=>a.chapterId===ch.id);if(!chA.length)return null;
+        const chA=assignments.filter(a=>a.chapterId===ch.id);
+        const chLogs=(student.xpLog||[]).filter((l:any)=>l.chapterId===ch.id);
+        if(!chA.length&&!chLogs.length)return null;
         return(
-          <div key={ch.id} style={{marginBottom:28}}>
-            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${ch.color}35`}}>
-              <span style={{fontSize:24}}>{ch.icon}</span>
-              <div><div className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:2}}>{ch.label}</div><div className="cond" style={{fontSize:22,fontWeight:700,color:ch.color}}>{ch.title}</div></div>
+          <div key={ch.id} style={{marginBottom:32}}>
+            {/* ── Chapter Header ── */}
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,paddingBottom:10,borderBottom:`2px solid ${ch.color}50`}}>
+              <span style={{fontSize:28}}>{ch.icon}</span>
+              <div>
+                <div className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:2}}>{ch.label}</div>
+                <div className="cond" style={{fontSize:24,fontWeight:700,color:ch.color}}>{ch.title}</div>
+              </div>
             </div>
-            {chA.map(a=>{
-              const sub=student.submissions?.[a.id];const tm=TYPE_META[a.type]||{};
-              return(
-                <div key={a.id} className="card" style={{display:"flex",gap:16,alignItems:"center",marginBottom:8,borderColor:sub?`${ch.color}50`:"var(--border)",background:sub?`linear-gradient(135deg,var(--bg2),${ch.bg})`:"var(--bg2)"}}>
-                  <div style={{fontSize:28,flexShrink:0}}>{tm.icon||"📄"}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:"flex",gap:8,marginBottom:6,flexWrap:"wrap"}}>
-                      <span className="badge" style={{background:`${tm.color}20`,border:`1px solid ${tm.color}50`,color:tm.color}}>{tm.label}</span>
-                      {sub?<span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ ส่งแล้ว</span>
-                         :<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.3)",color:"var(--red)"}}>⏳ ยังไม่ส่ง</span>}
-                    </div>
-                    <div style={{fontSize:14,fontWeight:600,color:"#fff",marginBottom:4}}>{a.title}</div>
-                    <div style={{fontSize:12,color:"var(--muted)"}}>{a.desc} · ครบกำหนด {a.due}</div>
-                    {sub&&<div style={{fontSize:12,marginTop:4}}>
-                      <a href={sub.file} target="_blank" rel="noreferrer" style={{color:"var(--cyan)"}}>🔗 ดูไฟล์งาน</a>
-                      <span style={{color:"var(--muted)"}}> · {sub.submittedAt}</span>
-                      <span style={{marginLeft:8,color:sub.graded?"var(--gold)":"var(--muted)",fontFamily:"'Share Tech Mono',monospace",fontSize:11}}>
-                        {sub.graded?`⭐ ${sub.xpEarned} / ${sub.maxXp||a.xp} XP`:"⏳ รอครูตรวจ"}
-                      </span>
-                    </div>}
-                  </div>
-                  <div style={{textAlign:"center",flexShrink:0}}><div className="mono" style={{fontSize:14,color:"var(--gold)",fontWeight:700}}>+{a.xp}</div><div style={{fontSize:10,color:"var(--muted)"}}>XP</div></div>
-                  <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
-                    {!sub&&<button className="btn btn-cyan" onClick={()=>openUpload(a)} style={{padding:"8px 14px",fontSize:12}}>📎 แนบลิงก์</button>}
-                    {sub&&<button className="btn-ghost" onClick={()=>replaceFile(a.id)} style={{fontSize:11}}>🔄 เปลี่ยน</button>}
-                    {sub&&<button className="btn btn-red" onClick={()=>removeSubmission(a.id)} style={{padding:"6px 12px",fontSize:11}}>🗑 ลบ</button>}
-                  </div>
+
+            {/* ── ภาระงาน ── */}
+            {chA.length>0&&(
+              <div style={{marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,paddingLeft:4}}>
+                  <span style={{fontSize:16}}>📝</span>
+                  <div className="mono" style={{fontSize:10,color:"var(--muted2)",letterSpacing:2,fontWeight:700}}>ภาระงาน</div>
+                  <span className="badge" style={{background:`${ch.color}15`,border:`1px solid ${ch.color}40`,color:ch.color,fontSize:9}}>{chA.length} งาน</span>
                 </div>
-              );
-            })}
+                {chA.map(a=>{
+                  const sub=student.submissions?.[a.id];const tm=TYPE_META[a.type]||{};
+                  return(
+                    <div key={a.id} className="card" style={{display:"flex",gap:16,alignItems:"center",marginBottom:8,marginLeft:16,
+                      borderColor:sub?`${ch.color}50`:"var(--border)",background:sub?`linear-gradient(135deg,var(--bg2),${ch.bg})`:"var(--bg2)"}}>
+                      <div style={{fontSize:28,flexShrink:0}}>{tm.icon||"📄"}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",gap:8,marginBottom:6,flexWrap:"wrap"}}>
+                          <span className="badge" style={{background:`${tm.color}20`,border:`1px solid ${tm.color}50`,color:tm.color}}>{tm.label}</span>
+                          {sub?<span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ ส่งแล้ว</span>
+                             :<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.3)",color:"var(--red)"}}>⏳ ยังไม่ส่ง</span>}
+                        </div>
+                        <div style={{fontSize:14,fontWeight:600,color:"#fff",marginBottom:4}}>{a.title}</div>
+                        <div style={{fontSize:12,color:"var(--muted)"}}>{a.desc} · ครบกำหนด {a.due}</div>
+                        {sub&&<div style={{fontSize:12,marginTop:4}}>
+                          <a href={sub.file} target="_blank" rel="noreferrer" style={{color:"var(--cyan)"}}>🔗 ดูไฟล์งาน</a>
+                          <span style={{color:"var(--muted)"}}> · {sub.submittedAt}</span>
+                          <span style={{marginLeft:8,color:sub.graded?"var(--gold)":"var(--muted)",fontFamily:"'Share Tech Mono',monospace",fontSize:11}}>
+                            {sub.graded?`⭐ ${sub.xpEarned} / ${sub.maxXp||a.xp} XP`:"⏳ รอครูตรวจ"}
+                          </span>
+                        </div>}
+                      </div>
+                      <div style={{textAlign:"center",flexShrink:0}}><div className="mono" style={{fontSize:14,color:"var(--gold)",fontWeight:700}}>+{a.xp}</div><div style={{fontSize:10,color:"var(--muted)"}}>XP</div></div>
+                      <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
+                        {!sub&&<button className="btn btn-cyan" onClick={()=>openUpload(a)} style={{padding:"8px 14px",fontSize:12}}>📎 แนบลิงก์</button>}
+                        {sub&&<button className="btn-ghost" onClick={()=>replaceFile(a.id)} style={{fontSize:11}}>🔄 เปลี่ยน</button>}
+                        {sub&&<button className="btn btn-red" onClick={()=>removeSubmission(a.id)} style={{padding:"6px 12px",fontSize:11}}>🗑 ลบ</button>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── กิจกรรมในห้องเรียน ── */}
+            {chLogs.length>0&&(
+              <div style={{marginBottom:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,paddingLeft:4}}>
+                  <span style={{fontSize:16}}>🏫</span>
+                  <div className="mono" style={{fontSize:10,color:"#aa8ff0",letterSpacing:2,fontWeight:700}}>กิจกรรมในห้องเรียน</div>
+                  <span className="badge" style={{background:"rgba(170,143,240,.2)",border:"1px solid rgba(170,143,240,.4)",color:"#aa8ff0",fontSize:9}}>{chLogs.length} กิจกรรม</span>
+                </div>
+                {[...chLogs].reverse().map((log:any,i:number)=>(
+                  <div key={i} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,marginLeft:16,borderColor:"rgba(170,143,240,.3)"}}>
+                    <div style={{fontSize:22}}>⭐</div>
+                    <div style={{flex:1}}>
+                      <span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)",marginBottom:4,display:"inline-block"}}>✓ ได้รับแล้ว</span>
+                      <div style={{fontSize:13,fontWeight:600,color:"#fff",marginTop:4}}>{log.activity}</div>
+                      <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{log.date}</div>
+                    </div>
+                    <div className="mono" style={{fontSize:16,fontWeight:700,color:"var(--gold)"}}>+{log.xp} XP</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
-      {/* ── กิจกรรมในห้องเรียน ── */}
-      {(student.xpLog||[]).length>0&&(
+      {/* กิจกรรมที่ไม่ได้ระบุบท (legacy) */}
+      {(student.xpLog||[]).filter((l:any)=>!l.chapterId).length>0&&(
         <div style={{marginBottom:28}}>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12,paddingBottom:10,borderBottom:"1px solid rgba(170,143,240,.35)"}}>
-            <span style={{fontSize:24}}>🏫</span>
-            <div>
-              <div className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:2}}>CLASSROOM ACTIVITIES</div>
-              <div className="cond" style={{fontSize:22,fontWeight:700,color:"#aa8ff0"}}>กิจกรรมในห้องเรียน</div>
-            </div>
-            <span className="badge" style={{background:"rgba(170,143,240,.2)",border:"1px solid rgba(170,143,240,.4)",color:"#aa8ff0"}}>{(student.xpLog||[]).length} กิจกรรม</span>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+            <span style={{fontSize:16}}>🏫</span>
+            <div className="mono" style={{fontSize:10,color:"#aa8ff0",letterSpacing:2,fontWeight:700}}>กิจกรรมอื่นๆ</div>
           </div>
-          {[...(student.xpLog||[])].reverse().map((log,i)=>(
+          {[...(student.xpLog||[])].filter((l:any)=>!l.chapterId).reverse().map((log:any,i:number)=>(
             <div key={i} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:"rgba(170,143,240,.3)"}}>
-              <div style={{fontSize:26}}>⭐</div>
+              <div style={{fontSize:22}}>⭐</div>
               <div style={{flex:1}}>
                 <span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)",marginBottom:4,display:"inline-block"}}>✓ ได้รับแล้ว</span>
-                <div style={{fontSize:14,fontWeight:600,color:"#fff",marginTop:4}}>{log.activity}</div>
-                <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{log.date}</div>
+                <div style={{fontSize:13,fontWeight:600,color:"#fff",marginTop:4}}>{log.activity}</div>
+                <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{log.date}</div>
               </div>
-              <div className="mono" style={{fontSize:18,fontWeight:700,color:"var(--gold)"}}>+{log.xp} XP</div>
+              <div className="mono" style={{fontSize:16,fontWeight:700,color:"var(--gold)"}}>+{log.xp} XP</div>
             </div>
           ))}
         </div>
@@ -1635,6 +1671,7 @@ function TeacherScores({students,setStudents}){
   const [selMulti,setSelMulti]=useState([]); // หลายคน
   const [xpAmt,setXpAmt]=useState("");
   const [activityName,setActivityName]=useState("");
+  const [selChapter,setSelChapter]=useState("CH1");
   const [msg,setMsg]=useState(null);
 
   function toast(t,isErr=false){setMsg({text:t,err:isErr});setTimeout(()=>setMsg(null),3500);}
@@ -1649,7 +1686,7 @@ function TeacherScores({students,setStudents}){
     if(targetMode==="single"&&!selStu){toast("กรุณาเลือกนักเรียน",true);return;}
     if(targetMode==="multi"&&selMulti.length===0){toast("กรุณาเลือกนักเรียนอย่างน้อย 1 คน",true);return;}
     const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
-    const logEntry={activity:activityName.trim(),xp:Number(xpAmt),date:today};
+    const logEntry={activity:activityName.trim(),xp:Number(xpAmt),date:today,chapterId:selChapter};
     if(targetMode==="all"){
       setStudents(prev=>prev.map(s=>({...s,xp:s.xp+Number(xpAmt),xpLog:[...(s.xpLog||[]),logEntry]})));
       toast(`✅ เพิ่ม ${xpAmt} XP จาก "${activityName}" ให้ทุกคน ${students.length} คน!`);
@@ -1662,7 +1699,7 @@ function TeacherScores({students,setStudents}){
       setStudents(prev=>prev.map(s=>s.id===selStu?{...s,xp:s.xp+Number(xpAmt),xpLog:[...(s.xpLog||[]),logEntry]}:s));
       toast(`✅ เพิ่ม ${xpAmt} XP จาก "${activityName}" ให้ ${name}!`);
     }
-    setXpAmt("");setActivityName("");setSelStu("");
+    setXpAmt("");setActivityName("");setSelStu("");setSelChapter("CH1");
   }
 
   const allActivities=useMemo(()=>{
@@ -1701,10 +1738,18 @@ function TeacherScores({students,setStudents}){
         <>
           <div className="card card-gold" style={{marginBottom:20}}>
             <div className="cond" style={{fontSize:22,color:"var(--gold)",letterSpacing:2,marginBottom:18}}>⭐ เพิ่ม XP จากกิจกรรม</div>
-            <div style={{marginBottom:14}}>
-              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ชื่องาน / กิจกรรม</label>
-              <input className="input" value={activityName} onChange={e=>setActivityName(e.target.value)}
-                placeholder="เช่น แบบทดสอบบทที่ 1, ใบงาน 2.3, ตอบคำถามในชั้นเรียน"/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>บทเรียน</label>
+                <select className="input" value={selChapter} onChange={e=>setSelChapter(e.target.value)}>
+                  {CHAPTERS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label} {c.title}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ชื่อกิจกรรม</label>
+                <input className="input" value={activityName} onChange={e=>setActivityName(e.target.value)}
+                  placeholder="เช่น ตอบคำถาม, แบบทดสอบ"/>
+              </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
               <div>
