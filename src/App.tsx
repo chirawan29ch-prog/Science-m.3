@@ -1908,7 +1908,7 @@ function TeacherScores({students,setStudents}){
 // ─────────────────────────────────────────────
 // TEACHER: AIRDROP
 // ─────────────────────────────────────────────
-function TeacherAirdrop({students,setPendingAirdrop}){
+function TeacherAirdrop({students,setPendingAirdrop,setStudents}){
   const DEFAULT_POOL=[
     {id:"r1",name:"AWM Sniper Rifle",icon:"🔫",rarity:"LEGENDARY",color:"#f5cc70"},
     {id:"r2",name:"Level 3 Helmet",icon:"⛑️",rarity:"EPIC",color:"#a569bd"},
@@ -1920,6 +1920,7 @@ function TeacherAirdrop({students,setPendingAirdrop}){
     {id:"r8",name:"Bandage Pack",icon:"🩹",rarity:"COMMON",color:"#7b8fe0"},
   ];
   const RARITY_COLORS={LEGENDARY:"#f5cc70",EPIC:"#a569bd",RARE:"#4ecaae",UNCOMMON:"#7de8a0",CUSTOM:"#e88c4a",COMMON:"#7b8fe0"};
+  const [tabAir,setTabAir]=useState("roll"); // "roll" | "history"
   const [pool,setPool]=useState(DEFAULT_POOL);
   const [showPoolEditor,setShowPoolEditor]=useState(false);
   const [addForm,setAddForm]=useState({name:"",icon:"🎁",rarity:"CUSTOM"});
@@ -1975,9 +1976,61 @@ function TeacherAirdrop({students,setPendingAirdrop}){
     setTimeout(()=>setSent(null),4000);setResult(null);setSelStu("");setNote("");
   }
 
+  // รวม inventory ทุกคนเป็นประวัติ
+  const allHistory=students.flatMap(s=>(s.inventory||[]).map((it:any,idx:number)=>({...it,studentId:s.id,studentName:s.name,studentAvatar:s.avatar,idx})))
+    .sort((a:any,b:any)=>a.receivedAt>b.receivedAt?-1:1);
+
+  function removeAirdropHistory(studentId:string,idx:number){
+    if(!window.confirm("ลบ Airdrop นี้ออกจาก inventory ของนักเรียน?"))return;
+    setStudents(prev=>prev.map(s=>s.id===studentId?{...s,inventory:s.inventory.filter((_:any,i:number)=>i!==idx)}:s));
+  }
+
+  const tabStyle2=(t:string)=>({
+    background:tabAir===t?"rgba(232,188,85,.12)":"transparent",
+    border:"none",borderBottom:tabAir===t?"2px solid var(--gold)":"2px solid transparent",
+    color:tabAir===t?"var(--gold2)":"var(--muted2)",
+    padding:"10px 22px",cursor:"pointer",
+    fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,
+    transition:"all .2s"
+  });
+
   return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
-      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:16}}>📦 AIRDROP LAUNCHER</div>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:12}}>📦 AIRDROP LAUNCHER</div>
+      <div style={{display:"flex",borderBottom:"1px solid var(--border)",marginBottom:20}}>
+        <button style={tabStyle2("roll")} onClick={()=>setTabAir("roll")}>🎲 ส่ง Airdrop</button>
+        <button style={tabStyle2("history")} onClick={()=>setTabAir("history")}>📋 ประวัติการรับ ({allHistory.length})</button>
+      </div>
+      {tabAir==="history"&&(
+        <div>
+          {allHistory.length===0?(
+            <div className="card" style={{textAlign:"center",padding:48}}>
+              <div style={{fontSize:40,marginBottom:12}}>📦</div>
+              <div className="cond" style={{fontSize:20,color:"var(--muted)"}}>ยังไม่มีประวัติการส่ง Airdrop</div>
+            </div>
+          ):(
+            allHistory.map((it:any,i:number)=>(
+              <div key={i} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:`${it.color||"var(--border)"}40`}}>
+                <div style={{fontSize:32}}>{it.icon}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:600,color:it.color||"#fff"}}>{it.name}</div>
+                  <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
+                    <span className="badge" style={{background:`${it.color||"#fff"}22`,border:`1px solid ${it.color||"#fff"}50`,color:it.color||"#fff",fontSize:9}}>★ {it.rarity}</span>
+                    <span style={{fontSize:12,color:"var(--muted)"}}>{it.receivedAt}</span>
+                  </div>
+                  {it.note&&<div style={{fontSize:12,color:"var(--muted2)",fontStyle:"italic",marginTop:3}}>"{it.note}"</div>}
+                </div>
+                <div style={{textAlign:"center",minWidth:120}}>
+                  <div style={{fontSize:24}}>{it.studentAvatar}</div>
+                  <div style={{fontSize:12,color:"#fff",marginTop:2}}>{it.studentName}</div>
+                </div>
+                <button className="btn btn-red" onClick={()=>removeAirdropHistory(it.studentId,it.idx)} style={{padding:"7px 12px",fontSize:12,flexShrink:0}}>🗑 ลบ</button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+      {tabAir==="roll" && (<div>
       {sent&&<div className="air-in" style={{background:"rgba(232,188,85,.12)",border:"1px solid rgba(232,188,85,.5)",borderRadius:8,padding:"13px 20px",marginBottom:14,color:"var(--gold2)",fontSize:14,textAlign:"center"}}>{sent}</div>}
       <div className="card card-gold" style={{marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showPoolEditor?16:0}}>
@@ -2061,6 +2114,8 @@ function TeacherAirdrop({students,setPendingAirdrop}){
         </div>
       </div>
     </div>
+    )}
+  </div>
   );
 }
 
@@ -2197,8 +2252,17 @@ export default function App(){
   useEffect(()=>{
     if(!pendingAirdrop)return;
     const{targetStudentId,...item}=pendingAirdrop as any;
-    setStudents(prev=>prev.map(s=>s.id===targetStudentId?{...s,inventory:[...s.inventory,{...item,seen:false}]}:s));
-    if(auth?.role==="student"&&auth?.userId===targetStudentId)setActivePopup({...item});
+    // เพิ่ม inventory พร้อม seen:false เสมอ
+    setStudents(prev=>{
+      const updated=prev.map(s=>s.id===targetStudentId?{...s,inventory:[...s.inventory,{...item,seen:false}]}:s);
+      // บันทึกลง Sheet ทันทีโดยไม่รอ debounce
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+    // ถ้านักเรียน login อยู่ตอนนี้ → แสดง popup ทันที
+    if(auth?.role==="student"&&auth?.userId===targetStudentId){
+      setTimeout(()=>setActivePopup({...item}),300);
+    }
     setPendingAirdrop(null);
   },[pendingAirdrop]);
 
@@ -2249,7 +2313,7 @@ export default function App(){
           {role==="teacher"&&page==="t-resources"  &&<TeacherResources resources={resources} setResources={setResources}/>}
           {role==="teacher"&&page==="t-scores"     &&<TeacherScores students={students} setStudents={setStudents}/>}
           {role==="teacher"&&page==="t-exam"       &&<TeacherExamScores students={students} setStudents={setStudents}/>}
-          {role==="teacher"&&page==="t-airdrop"    &&<TeacherAirdrop students={students} setPendingAirdrop={setPendingAirdrop}/>}
+          {role==="teacher"&&page==="t-airdrop"    &&<TeacherAirdrop students={students} setPendingAirdrop={setPendingAirdrop} setStudents={setStudents}/>}
           {role==="teacher"&&page==="ranking"      &&<RankingPage students={students} myId={undefined} isTeacher={true}/>}
         </main>
       </div>
