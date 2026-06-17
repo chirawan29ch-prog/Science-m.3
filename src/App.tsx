@@ -1350,7 +1350,11 @@ function TeacherStudents({students,assignments,setStudents}){
   const [sel,setSel]=useState(null);
   const s=sel?students.find(x=>x.id===sel):null;
   function removeAirdrop(studentId,idx){
-    setStudents(prev=>prev.map(s=>s.id===studentId?{...s,inventory:s.inventory.filter((_,i)=>i!==idx)}:s));
+    setStudents(prev=>{
+      const updated=prev.map(s=>s.id===studentId?{...s,inventory:s.inventory.filter((_,i)=>i!==idx)}:s);
+      gasSave("saveStudents",updated);
+      return updated;
+    });
   }
   if(s)return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
@@ -1982,7 +1986,11 @@ function TeacherAirdrop({students,setPendingAirdrop,setStudents}){
 
   function removeAirdropHistory(studentId:string,idx:number){
     if(!window.confirm("ลบ Airdrop นี้ออกจาก inventory ของนักเรียน?"))return;
-    setStudents(prev=>prev.map(s=>s.id===studentId?{...s,inventory:s.inventory.filter((_:any,i:number)=>i!==idx)}:s));
+    setStudents(prev=>{
+      const updated=prev.map(s=>s.id===studentId?{...s,inventory:s.inventory.filter((_:any,i:number)=>i!==idx)}:s);
+      gasSave("saveStudents",updated);
+      return updated;
+    });
   }
 
   const tabStyle2=(t:string)=>({
