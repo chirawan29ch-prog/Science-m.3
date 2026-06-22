@@ -81,7 +81,7 @@ const XP_RANKS = [
   {minXP:1250,maxXP:1374,label:"BRONZE II",grade:"1",  color:"#ff9840",icon:"🥉",desc:"อ่อนมาก",   scoreRange:"50–54"},
   {minXP:0,   maxXP:1249,label:"IRON",     grade:"0",  color:"#9aacbf",icon:"⚙️",desc:"ไม่ผ่าน",   scoreRange:"0–49"},
 ];
-const MAX_XP = 2500;
+let MAX_XP = 2500;
 
 const AIRDROP_POOL = [
   {id:"r1",name:"AWM Sniper Rifle",   icon:"🔫",rarity:"LEGENDARY",color:"#f5cc70"},
@@ -1307,7 +1307,7 @@ function GradeChart({students}){
 // ─────────────────────────────────────────────
 // TEACHER: OVERVIEW
 // ─────────────────────────────────────────────
-function TeacherOverview({students,assignments,setPage}){
+function TeacherOverview({students,assignments,setPage,maxXp,onEditMaxXp}:any){
   const avgXP=Math.round(students.reduce((a,s)=>a+s.xp,0)/students.length);
   const passing=students.filter(s=>parseFloat(getRank(s.xp).grade)>0).length;
   return(
@@ -1321,6 +1321,17 @@ function TeacherOverview({students,assignments,setPage}){
             <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{s.label}</div>
           </div>
         ))}
+      </div>
+      {/* XP เต็มทั้งเทอม */}
+      <div className="card" style={{marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",borderColor:"rgba(232,188,85,.5)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <span style={{fontSize:28}}>⚙️</span>
+          <div>
+            <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2}}>XP เต็มทั้งเทอม</div>
+            <div className="cond" style={{fontSize:28,fontWeight:900,color:"var(--gold)"}}>{(maxXp||2500).toLocaleString()} <span style={{fontSize:14,color:"var(--muted)"}}>XP</span></div>
+          </div>
+        </div>
+        <button className="btn-ghost" onClick={onEditMaxXp} style={{fontSize:13,padding:"9px 18px",borderColor:"rgba(232,188,85,.4)",color:"var(--gold)"}}>✏️ แก้ไข</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
         {[
@@ -1355,6 +1366,11 @@ function TeacherOverview({students,assignments,setPage}){
 // ─────────────────────────────────────────────
 function TeacherStudents({students,assignments,setStudents}){
   const [sel,setSel]=useState(null);
+  const [editXpModal,setEditXpModal]=useState(false);
+  const [newXp,setNewXp]=useState("");
+  const [xpMsg,setXpMsg]=useState(null);
+  const [editSubModal,setEditSubModal]=useState<any>(null); // {assignmentId, xpEarned, maxXp}
+  const [editLogModal,setEditLogModal]=useState<any>(null); // {idx, xp, activity}
   const s=sel?students.find(x=>x.id===sel):null;
   function removeAirdrop(studentId,idx){
     setStudents(prev=>{
@@ -1363,14 +1379,150 @@ function TeacherStudents({students,assignments,setStudents}){
       return updated;
     });
   }
+  function saveEditXp(){
+    if(!s)return;
+    const val=Number(newXp);
+    if(isNaN(val)||val<0){setXpMsg({t:"err",text:"กรุณาใส่ตัวเลขที่ถูกต้อง"});return;}
+    if(!window.confirm(`แก้ไข XP ของ ${s.name} จาก ${s.xp} → ${val}?`))return;
+    setStudents(prev=>{
+      const updated=prev.map(st=>st.id===s.id?{...st,xp:val}:st);
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+    setXpMsg({t:"ok",text:`✅ แก้ไข XP เป็น ${val} แล้ว`});
+    setTimeout(()=>{setEditXpModal(false);setXpMsg(null);setNewXp("");},1500);
+  }
+
+  // แก้ไข submission XP + maxXp
+  function saveEditSub(){
+    if(!s||!editSubModal)return;
+    const{assignmentId,xpEarned,maxXp}=editSubModal;
+    const newXpEarned=Number(xpEarned);
+    const newMaxXp=Number(maxXp);
+    if(isNaN(newXpEarned)||newXpEarned<0){return;}
+    const sub=s.submissions?.[assignmentId];
+    if(!sub)return;
+    const oldXp=sub.graded?(sub.xpEarned||0):0;
+    const diff=newXpEarned-oldXp;
+    setStudents((prev:any)=>{
+      const updated=prev.map((st:any)=>st.id===s.id?{
+        ...st,
+        xp:st.xp+diff,
+        submissions:{...st.submissions,[assignmentId]:{...sub,xpEarned:newXpEarned,maxXp:newMaxXp,graded:true}}
+      }:st);
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+    setEditSubModal(null);
+  }
+
+  // แก้ไข xpLog รายกิจกรรม
+  function saveEditLog(){
+    if(!s||!editLogModal)return;
+    const{idx,xp,activity}=editLogModal;
+    const newXpVal=Number(xp);
+    if(isNaN(newXpVal)||newXpVal<0)return;
+    const oldLog=s.xpLog?.[idx];
+    if(!oldLog)return;
+    const diff=newXpVal-oldLog.xp;
+    setStudents((prev:any)=>{
+      const updated=prev.map((st:any)=>{
+        if(st.id!==s.id)return st;
+        const newLog=[...(st.xpLog||[])];
+        newLog[idx]={...newLog[idx],xp:newXpVal,activity:activity.trim()||newLog[idx].activity};
+        return{...st,xp:st.xp+diff,xpLog:newLog};
+      });
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+    setEditLogModal(null);
+  }
+
   if(s)return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
       <button className="btn-outline" onClick={()=>setSel(null)} style={{marginBottom:20}}>← กลับ</button>
+      {editXpModal&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:420}}>
+            <div className="cond" style={{fontSize:22,color:"var(--gold)",letterSpacing:2,marginBottom:16}}>✏️ แก้ไข XP — {s.name}</div>
+            <div style={{marginBottom:6,fontSize:13,color:"var(--muted2)"}}>XP ปัจจุบัน: <span className="mono" style={{color:"var(--gold)",fontWeight:700}}>{s.xp.toLocaleString()} XP</span></div>
+            <div style={{marginBottom:16}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP ใหม่</label>
+              <input className="input" type="number" min="0" max="9999" value={newXp}
+                onChange={e=>setNewXp(e.target.value)} placeholder={String(s.xp)}
+                onKeyDown={e=>e.key==="Enter"&&saveEditXp()}/>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:6}}>⚠️ การแก้ไขนี้จะบันทึกลง Google Sheet ทันที</div>
+            </div>
+            {xpMsg&&<div style={{background:xpMsg.t==="ok"?"rgba(94,200,126,.14)":"rgba(232,96,96,.14)",border:`1px solid ${xpMsg.t==="ok"?"rgba(94,200,126,.4)":"rgba(232,96,96,.4)"}`,borderRadius:6,padding:"9px 14px",color:xpMsg.t==="ok"?"var(--green)":"var(--red)",fontSize:13,marginBottom:12}}>{xpMsg.text}</div>}
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={saveEditXp} style={{flex:1,fontSize:15,padding:12}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>{setEditXpModal(false);setXpMsg(null);setNewXp("");}} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal แก้ไข Submission */}
+      {editSubModal&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:460}}>
+            <div className="cond" style={{fontSize:20,color:"var(--gold)",letterSpacing:2,marginBottom:16}}>✏️ แก้ไขคะแนนงาน</div>
+            <div style={{fontSize:13,color:"var(--muted2)",marginBottom:16}}>{assignments.find((a:any)=>a.id===editSubModal.assignmentId)?.title}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:8}}>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP ที่ได้</label>
+                <input className="input" type="number" min="0" value={editSubModal.xpEarned}
+                  onChange={e=>setEditSubModal({...editSubModal,xpEarned:e.target.value})}/>
+              </div>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP เต็ม</label>
+                <input className="input" type="number" min="1" value={editSubModal.maxXp}
+                  onChange={e=>{
+                    const newMax=Number(e.target.value)||1;
+                    const oldMax=editSubModal.origMaxXp||newMax;
+                    const ratio=newMax/oldMax;
+                    const newEarned=Math.round((editSubModal.origXpEarned||editSubModal.xpEarned)*ratio);
+                    setEditSubModal({...editSubModal,maxXp:newMax,xpEarned:newEarned});
+                  }}/>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"#eab308",marginBottom:16,padding:"8px 12px",background:"rgba(234,179,8,.1)",borderRadius:6}}>
+              💡 เมื่อแก้ XP เต็ม ระบบจะปรับ XP ที่ได้ตามสัดส่วนอัตโนมัติ
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={saveEditSub} style={{flex:1,fontSize:15,padding:12}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>setEditSubModal(null)} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal แก้ไข xpLog */}
+      {editLogModal&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:420}}>
+            <div className="cond" style={{fontSize:20,color:"var(--gold)",letterSpacing:2,marginBottom:16}}>✏️ แก้ไขกิจกรรม</div>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ชื่อกิจกรรม</label>
+              <input className="input" value={editLogModal.activity}
+                onChange={e=>setEditLogModal({...editLogModal,activity:e.target.value})}/>
+            </div>
+            <div style={{marginBottom:16}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP ที่ได้</label>
+              <input className="input" type="number" min="0" value={editLogModal.xp}
+                onChange={e=>setEditLogModal({...editLogModal,xp:e.target.value})}/>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={saveEditLog} style={{flex:1,fontSize:15,padding:12}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>setEditLogModal(null)} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="card card-gold" style={{marginBottom:16}}>
         <div style={{display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
           <div style={{fontSize:52}}>{s.avatar}</div>
           <div style={{flex:1}}><div className="cond" style={{fontSize:28,fontWeight:700,color:"#fff"}}>{s.name}</div></div>
           <GradeTag xp={s.xp} big={true}/>
+          <button className="btn-ghost" onClick={()=>{setNewXp(String(s.xp));setEditXpModal(true);}} style={{fontSize:12,padding:"7px 14px",borderColor:"rgba(232,96,96,.4)",color:"var(--red)"}}>✏️ แก้ XP</button>
         </div>
         <div style={{marginTop:16}}><XPBar xp={s.xp}/></div>
         <div style={{marginTop:10}}><ProgressFlag xp={s.xp}/></div>
@@ -1383,6 +1535,14 @@ function TeacherStudents({students,assignments,setStudents}){
             <span className="mono" style={{fontSize:11,color:"var(--gold)"}}>+{a.xp} XP</span>
             {sub?<>
               <a href={sub.file} target="_blank" rel="noreferrer" style={{fontSize:11,color:"var(--cyan)"}}>🔗 ดูงาน</a>
+              <span className="mono" style={{fontSize:11,color:"var(--gold)"}}>{sub.xpEarned||0}/{sub.maxXp||a.xp} XP</span>
+              <button className="btn-ghost" onClick={()=>setEditSubModal({
+                assignmentId:a.id,
+                xpEarned:sub.xpEarned||0,
+                maxXp:sub.maxXp||a.xp,
+                origXpEarned:sub.xpEarned||0,
+                origMaxXp:sub.maxXp||a.xp
+              })} style={{fontSize:11,padding:"4px 10px"}}>✏️</button>
               <span className="badge" style={{background:"rgba(94,200,126,.12)",border:"1px solid rgba(94,200,126,.35)",color:"var(--green)"}}>✓ ส่งแล้ว</span>
             </>:<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.25)",color:"var(--red)"}}>⏳ ยังไม่ส่ง</span>}
           </div>
@@ -1442,6 +1602,27 @@ function TeacherStudents({students,assignments,setStudents}){
           </div>
         );
       })()}
+      {/* xpLog section with edit */}
+      {(s.xpLog||[]).length>0&&(
+        <div className="card" style={{marginBottom:16}}>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:14}}>⭐ ประวัติ XP กิจกรรม</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[...(s.xpLog||[])].map((log:any,i:number)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",
+                background:"rgba(232,188,85,.06)",border:"1px solid rgba(232,188,85,.2)",borderRadius:8}}>
+                <div style={{fontSize:18}}>⭐</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{log.activity}</div>
+                  <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{log.date}</div>
+                </div>
+                <div className="mono" style={{fontSize:15,fontWeight:700,color:"var(--gold)"}}>+{log.xp} XP</div>
+                <button className="btn-ghost" onClick={()=>setEditLogModal({idx:i,xp:log.xp,activity:log.activity})}
+                  style={{fontSize:11,padding:"4px 10px",flexShrink:0}}>✏️</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {s.inventory&&s.inventory.length>0&&(
         <div className="card" style={{borderColor:"rgba(170,143,240,.35)"}}>
           <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:14}}>📦 AIRDROP INVENTORY ({s.inventory.length} ชิ้น)</div>
@@ -1484,6 +1665,7 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
   const [form,setForm]=useState({chapterId:"CH1",title:"",xp:200,due:"",desc:"",type:"worksheet"});
   const [checkModal,setCheckModal]=useState(null);
   const [editXp,setEditXp]=useState({});
+  const [editMaxXp,setEditMaxXp]=useState(""); // XP เต็มของงานที่กำลังตรวจ
 
   function save(){
     if(!form.title.trim())return;
@@ -1495,9 +1677,41 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
 
   function openCheck(a){
     setCheckModal(a);
+    setEditMaxXp(String(a.xp));
     const init={};
     students.forEach(s=>{const sub=s.submissions?.[a.id];init[s.id]=sub?.xpEarned??a.xp;});
     setEditXp(init);
+  }
+
+  // ปรับ XP เต็มทั้งห้อง + ปรับสัดส่วนทุกคนที่ส่งแล้ว
+  function applyNewMaxXp(){
+    const a=checkModal;
+    const newMax=Number(editMaxXp);
+    if(!newMax||newMax<=0)return;
+    const oldMax=a.xp;
+    if(newMax===oldMax)return;
+    if(!window.confirm(`ปรับ XP เต็มจาก ${oldMax} → ${newMax} และปรับคะแนนทุกคนตามสัดส่วน?`))return;
+    // อัปเดต assignment xp
+    setAssignments((prev:any)=>prev.map((x:any)=>x.id===a.id?{...x,xp:newMax}:x));
+    // ปรับ XP นักเรียนทุกคนที่ส่งแล้ว
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      const sub=s.submissions?.[a.id];
+      if(!sub)return s;
+      const oldEarned=sub.xpEarned||0;
+      const newEarned=Math.round(oldEarned/oldMax*newMax);
+      const diff=newEarned-oldEarned;
+      return{...s,xp:s.xp+diff,
+        submissions:{...s.submissions,[a.id]:{...sub,xpEarned:newEarned,maxXp:newMax}}};
+    }));
+    // อัปเดต editXp state ให้แสดงค่าใหม่
+    const newInit:any={};
+    students.forEach((s:any)=>{
+      const sub=s.submissions?.[a.id];
+      if(sub){const oldE=sub.xpEarned||0;newInit[s.id]=Math.round(oldE/oldMax*newMax);}
+    });
+    setEditXp(newInit);
+    setCheckModal({...a,xp:newMax});
+    setEditMaxXp(String(newMax));
   }
 
   function saveXp(studentId){
@@ -1554,12 +1768,25 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
           <div className="card" style={{width:"100%",maxWidth:580,maxHeight:"85vh",overflowY:"auto",
             borderColor:"rgba(78,202,174,.4)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
-              <div>
+              <div style={{flex:1}}>
                 <div className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:2,marginBottom:4}}>ตรวจงาน</div>
                 <div className="cond" style={{fontSize:20,fontWeight:700,color:"#fff"}}>{checkModal.title}</div>
-                <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap",alignItems:"center"}}>
                   <span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ ส่งแล้ว {submitted.length} คน</span>
                   <span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.28)",color:"var(--red)"}}>⏳ ยังไม่ส่ง {notSubmitted.length} คน</span>
+                </div>
+                {/* แก้ XP เต็มทั้งห้อง */}
+                <div style={{display:"flex",alignItems:"center",gap:10,marginTop:14,padding:"10px 14px",
+                  background:"rgba(232,188,85,.08)",border:"1px solid rgba(232,188,85,.3)",borderRadius:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:12,color:"var(--muted2)",flexShrink:0}}>XP เต็มทั้งห้อง:</span>
+                  <input type="number" min="1" value={editMaxXp}
+                    onChange={e=>setEditMaxXp(e.target.value)}
+                    style={{width:80,background:"rgba(14,26,43,.8)",border:"1px solid var(--border2)",
+                      color:"var(--gold)",borderRadius:5,padding:"5px 8px",
+                      fontFamily:"'Share Tech Mono',monospace",fontSize:15,textAlign:"center",outline:"none"}}/>
+                  <button className="btn btn-gold" onClick={applyNewMaxXp}
+                    style={{fontSize:12,padding:"7px 16px"}}>⚖️ ปรับทั้งห้องตามสัดส่วน</button>
+                  <span style={{fontSize:10,color:"var(--muted)"}}>ปัจจุบัน: {checkModal.xp} XP</span>
                 </div>
               </div>
               <button className="btn-outline" onClick={()=>setCheckModal(null)} style={{padding:"7px 14px"}}>✕</button>
@@ -2279,11 +2506,21 @@ function TeacherGrades({students,setStudents}){
                 </div>
               </div>
               <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"center",fontSize:12,color:"var(--muted)"}}>
-                {[["#22c55e","เก่ง","≥67%"],["#eab308","กลาง","34–66%"],["#ef4444","อ่อน","<34%"]].map(([c,l,r])=>(
-                  <span key={l} style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{width:14,height:14,borderRadius:"50%",background:c,display:"inline-block"}}></span>{l} ({r})
-                  </span>
-                ))}
+                {(()=>{
+                  const t1=Math.ceil(maxPP/3);
+                  const t2=Math.ceil(maxPP*2/3);
+                  return[
+                    {c:"#22c55e",l:"เก่ง",  s:`${t2}–${maxPP} คะแนน`,r:`≥${Math.round(t2/maxPP*100)}%`},
+                    {c:"#eab308",l:"กลาง",  s:`${t1}–${t2-1} คะแนน`,r:`${Math.round(t1/maxPP*100)}–${Math.round((t2-1)/maxPP*100)}%`},
+                    {c:"#ef4444",l:"อ่อน",  s:`1–${t1-1} คะแนน`,r:`<${Math.round(t1/maxPP*100)}%`},
+                  ].map(({c,l,s,r})=>(
+                    <span key={l} style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{width:14,height:14,borderRadius:"50%",background:c,display:"inline-block"}}></span>
+                      <span style={{color:"var(--text)"}}>{l}</span>
+                      <span style={{color:"var(--muted)"}}>{s} ({r})</span>
+                    </span>
+                  ));
+                })()}
               </div>
             </div>
           </div>
@@ -2297,7 +2534,7 @@ function TeacherGrades({students,setStudents}){
               <thead>
                 <tr style={{background:"#f8f8f8"}}>
                   {["ชื่อ","Pre-test","Post-test","เปลี่ยนแปลง"].map((h,i)=>(
-                    <th key={i} style={{padding:"10px 8px",textAlign:i===0?"left":"center" as any,fontSize:12,fontWeight:600,borderBottom:"2px solid #e5e5e5",color:"#555"}}>{h}</th>
+                    <th key={i} style={{padding:"10px 12px",textAlign:i===0?"left":"center" as any,fontSize:12,fontWeight:600,borderBottom:"2px solid #e5e5e5",color:"#555"}}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -2313,7 +2550,7 @@ function TeacherGrades({students,setStudents}){
                   const aborder=same?"none":up?"1px solid #bbf7d0":"1px solid #fecdd3";
                   return(
                     <tr key={st.id} style={{borderBottom:"1px solid #f0f0f0"}}>
-                      <td style={{padding:"10px 8px",color:"#222",fontSize:13}}>{st.avatar} {st.name}</td>
+                      <td style={{padding:"10px 12px",color:"#222",fontSize:13,textAlign:"left"}}><span style={{display:"inline-flex",alignItems:"center",gap:8,whiteSpace:"nowrap"}}><span>{st.avatar}</span><span>{st.name}</span></span></td>
                       <td style={{padding:"8px",textAlign:"center"}}>
                         <div style={{display:"inline-flex",alignItems:"center",gap:6}}>
                           {pg&&<div style={{width:14,height:14,borderRadius:"50%",background:pg.bg,flexShrink:0}}></div>}
@@ -2682,6 +2919,9 @@ export default function App(){
   const [resources,setResources]=useState(INIT_RESOURCES);
   const [auth,setAuth]=useState(null);
   const [loaded,setLoaded]=useState(false);
+  const [maxXpSetting,setMaxXpSetting]=useState(2500);
+  const [maxXpModal,setMaxXpModal]=useState(false);
+  const [maxXpInput,setMaxXpInput]=useState("2500");
   const saveTimer=useRef<any>(null);
 
   // โหลดข้อมูลตอนเริ่ม
@@ -2798,7 +3038,7 @@ export default function App(){
           {role==="student"&&page==="ranking"      &&<RankingPage students={students} myId={userId} isTeacher={false}/>}
           {role==="student"&&page==="inventory"    &&currentStudent&&<StudentInventory student={currentStudent}/>}
           {role==="student"&&page==="settings"     &&currentStudent&&<StudentSettings student={currentStudent} setStudents={setStudents}/>}
-          {role==="teacher"&&page==="overview"     &&<TeacherOverview students={students} assignments={assignments} setPage={setPage}/>}
+          {role==="teacher"&&page==="overview"     &&<TeacherOverview students={students} assignments={assignments} setPage={setPage} maxXp={maxXpSetting} onEditMaxXp={()=>{setMaxXpInput(String(maxXpSetting));setMaxXpModal(true);}}/>}
           {role==="teacher"&&page==="students"     &&<TeacherStudents students={students} assignments={assignments} setStudents={setStudents}/>}
           {role==="teacher"&&page==="t-assignments"&&<TeacherAssignments assignments={assignments} setAssignments={setAssignments} students={students} setStudents={setStudents}/>}
           {role==="teacher"&&page==="t-resources"  &&<TeacherResources resources={resources} setResources={setResources}/>}
