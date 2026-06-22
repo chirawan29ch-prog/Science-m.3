@@ -1384,13 +1384,66 @@ function TeacherStudents({students,assignments,setStudents}){
     const val=Number(newXp);
     if(isNaN(val)||val<0){setXpMsg({t:"err",text:"กรุณาใส่ตัวเลขที่ถูกต้อง"});return;}
     if(!window.confirm(`แก้ไข XP ของ ${s.name} จาก ${s.xp} → ${val}?`))return;
-    setStudents(prev=>{
-      const updated=prev.map(st=>st.id===s.id?{...st,xp:val}:st);
+    setStudents((prev:any)=>{
+      const updated=prev.map((st:any)=>st.id===s.id?{...st,xp:val}:st);
       gasSave("saveStudents",updated);
       return updated;
     });
     setXpMsg({t:"ok",text:`✅ แก้ไข XP เป็น ${val} แล้ว`});
     setTimeout(()=>{setEditXpModal(false);setXpMsg(null);setNewXp("");},1500);
+  }
+
+  function calcCorrectXp(st:any){
+    const fromSubs=Object.values(st.submissions||{}).reduce((sum:number,sub:any)=>
+      sum+(sub?.graded?(sub.xpEarned||0):0),0);
+    const fromLog=(st.xpLog||[]).reduce((sum:number,l:any)=>sum+(l.xp||0),0);
+    return fromSubs+fromLog;
+  }
+
+  function recalcXp(targetStu:any){
+    const correct=calcCorrectXp(targetStu);
+    const fromSubs=Object.values(targetStu.submissions||{}).reduce((sum:number,sub:any)=>
+      sum+(sub?.graded?(sub.xpEarned||0):0),0);
+    const fromLog=(targetStu.xpLog||[]).reduce((sum:number,l:any)=>sum+(l.xp||0),0);
+    const diff=correct-targetStu.xp;
+    if(diff===0){alert(`✅ XP ของ ${targetStu.name} ถูกต้องอยู่แล้ว (${correct} XP)`);return;}
+    if(!window.confirm(
+      `คำนวณ XP ใหม่ของ ${targetStu.name}
+
+`+
+      `งานส่ง (ตรวจแล้ว): ${fromSubs} XP
+`+
+      `กิจกรรม (xpLog): ${fromLog} XP
+`+
+      `รวมใหม่: ${correct} XP
+
+`+
+      `XP ปัจจุบัน: ${targetStu.xp} XP (ต่าง ${diff>0?"+":""}${diff})
+
+`+
+      `ยืนยันปรับ?`
+    ))return;
+    setStudents((prev:any)=>{
+      const updated=prev.map((st:any)=>st.id===targetStu.id?{...st,xp:correct}:st);
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+  }
+
+  function recalcAllXp(){
+    const preview=(students as any[]).map(st=>{
+      const correct=calcCorrectXp(st);
+      return{id:st.id,name:st.name,old:st.xp,correct,diff:correct-st.xp};
+    });
+    const changed=preview.filter(s=>s.diff!==0);
+    if(changed.length===0){alert("✅ XP ทุกคนถูกต้องอยู่แล้ว!");return;}
+    const msg=changed.map(s=>"• "+s.name+": "+s.old+" → "+s.correct+" ("+(s.diff>0?"+":"")+s.diff+")").join(", ");
+    if(!window.confirm("คำนวณ XP ใหม่ทั้งห้อง รายการที่เปลี่ยน: "+msg+" ยืนยัน?"))return;
+    setStudents((prev:any)=>{
+      const updated=prev.map((st:any)=>({...st,xp:calcCorrectXp(st)}));
+      gasSave("saveStudents",updated);
+      return updated;
+    });
   }
 
   // แก้ไข submission XP + maxXp
@@ -1523,6 +1576,7 @@ function TeacherStudents({students,assignments,setStudents}){
           <div style={{flex:1}}><div className="cond" style={{fontSize:28,fontWeight:700,color:"#fff"}}>{s.name}</div></div>
           <GradeTag xp={s.xp} big={true}/>
           <button className="btn-ghost" onClick={()=>{setNewXp(String(s.xp));setEditXpModal(true);}} style={{fontSize:12,padding:"7px 14px",borderColor:"rgba(232,96,96,.4)",color:"var(--red)"}}>✏️ แก้ XP</button>
+          <button className="btn-ghost" onClick={()=>recalcXp(s)} style={{fontSize:12,padding:"7px 14px",borderColor:"rgba(234,179,8,.4)",color:"#eab308"}}>🔄 คำนวณใหม่</button>
         </div>
         <div style={{marginTop:16}}><XPBar xp={s.xp}/></div>
         <div style={{marginTop:10}}><ProgressFlag xp={s.xp}/></div>
@@ -1643,14 +1697,37 @@ function TeacherStudents({students,assignments,setStudents}){
   );
   return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
-      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>PLAYER ROSTER</div>
-      {[...students].sort((a,b)=>b.xp-a.xp).map((s,i)=>{const r=getRank(s.xp);return(
-        <div key={s.id} className="card card-hover slide-r" onClick={()=>setSel(s.id)} style={{display:"flex",alignItems:"center",gap:16,marginBottom:10,animationDelay:`${i*.04}s`}}>
-          <div style={{fontSize:40}}>{s.avatar}</div>
-          <div style={{flex:1}}><div style={{fontSize:15,fontWeight:600,color:"#fff",marginBottom:6}}>{s.name}</div><div style={{maxWidth:280}}><XPBar xp={s.xp} showLabel={false}/></div></div>
-          <div className="mono" style={{fontSize:20,color:r.color}}>{s.xp.toLocaleString()}</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3}}>PLAYER ROSTER</div>
+        <button className="btn-ghost" onClick={recalcAllXp}
+          style={{fontSize:12,padding:"8px 16px",borderColor:"rgba(234,179,8,.4)",color:"#eab308"}}>
+          🔄 คำนวณ XP ใหม่ทั้งห้อง
+        </button>
+      </div>
+      {[...students].sort((a:any,b:any)=>b.xp-a.xp).map((s:any,i:number)=>{const r=getRank(s.xp);
+        const correct=calcCorrectXp(s);
+        const hasError=correct!==s.xp;
+        return(
+        <div key={s.id} className="card card-hover slide-r" style={{display:"flex",alignItems:"center",gap:16,marginBottom:10,animationDelay:`${i*.04}s`,
+          borderColor:hasError?"rgba(239,68,68,.5)":"var(--border)"}}>
+          <div style={{fontSize:40,cursor:"pointer"}} onClick={()=>setSel(s.id)}>{s.avatar}</div>
+          <div style={{flex:1,cursor:"pointer"}} onClick={()=>setSel(s.id)}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+              <div style={{fontSize:15,fontWeight:600,color:"#fff"}}>{s.name}</div>
+              {hasError&&<span style={{fontSize:10,background:"rgba(239,68,68,.2)",border:"1px solid rgba(239,68,68,.4)",
+                color:"#ef4444",padding:"2px 7px",borderRadius:4,fontFamily:"'Share Tech Mono',monospace"}}>
+                ⚠ XP ไม่ตรง (ควรเป็น {correct})
+              </span>}
+            </div>
+            <div style={{maxWidth:280}}><XPBar xp={s.xp} showLabel={false}/></div>
+          </div>
+          <div className="mono" style={{fontSize:20,color:hasError?"#ef4444":r.color}}>{s.xp.toLocaleString()}</div>
           <GradeTag xp={s.xp}/>
-          <div style={{color:"var(--muted)"}}>›</div>
+          {hasError&&<button className="btn-ghost" onClick={e=>{e.stopPropagation();recalcXp(s);}}
+            style={{fontSize:11,padding:"6px 12px",borderColor:"rgba(234,179,8,.4)",color:"#eab308",flexShrink:0}}>
+            🔄 แก้
+          </button>}
+          <div style={{color:"var(--muted)",cursor:"pointer"}} onClick={()=>setSel(s.id)}>›</div>
         </div>
       );})}
     </div>
