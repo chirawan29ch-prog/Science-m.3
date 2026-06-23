@@ -2018,7 +2018,10 @@ function TeacherStudents({students,assignments,setStudents}){
           <div style={{fontSize:40,cursor:"pointer"}} onClick={()=>setSel(s.id)}>{s.avatar}</div>
           <div style={{flex:1,cursor:"pointer"}} onClick={()=>setSel(s.id)}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-              <div style={{fontSize:15,fontWeight:600,color:"#fff"}}>{s.name}</div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{fontSize:15,fontWeight:600,color:"#fff"}}>{s.name}</div>
+                <span className="badge" style={{background:s.room==="r1"?"rgba(240,160,192,.15)":"rgba(125,232,208,.15)",border:`1px solid ${s.room==="r1"?"rgba(240,160,192,.4)":"rgba(125,232,208,.4)"}`,color:s.room==="r1"?"#f0a0c0":"#7de8d0",fontSize:8}}>{s.room==="r1"?"ม.3/1":"ม.3/2"}</span>
+              </div>
               {hasError&&<span style={{fontSize:10,background:"rgba(239,68,68,.2)",border:"1px solid rgba(239,68,68,.4)",
                 color:"#ef4444",padding:"2px 7px",borderRadius:4,fontFamily:"'Share Tech Mono',monospace"}}>
                 ⚠ XP ไม่ตรง (ควรเป็น {correct})
@@ -2047,7 +2050,9 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
   const [form,setForm]=useState({chapterId:"CH1",title:"",xp:200,due:"",desc:"",type:"worksheet"});
   const [checkModal,setCheckModal]=useState(null);
   const [editXp,setEditXp]=useState({});
-  const [editMaxXp,setEditMaxXp]=useState(""); // XP เต็มของงานที่กำลังตรวจ
+  const [editMaxXp,setEditMaxXp]=useState("");
+  const [selRoomA,setSelRoomA]=useState("all");
+  const filteredStudentsA=selRoomA==="all"?students:students.filter((s:any)=>s.room===selRoomA);
 
   function save(){
     if(!form.title.trim())return;
@@ -2110,8 +2115,8 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
     }));
   }
 
-  const submitted=checkModal?students.filter(s=>s.submissions?.[checkModal.id]):[];
-  const notSubmitted=checkModal?students.filter(s=>!s.submissions?.[checkModal.id]):[];
+  const submitted=checkModal?filteredStudentsA.filter((s:any)=>s.submissions?.[checkModal.id]):[];
+  const notSubmitted=checkModal?filteredStudentsA.filter((s:any)=>!s.submissions?.[checkModal.id]):[];
 
   return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
@@ -2210,12 +2215,22 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
         </div>
       )}
 
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
         <div>
           <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3}}>MISSION CONTROL</div>
           <div className="cond" style={{fontSize:22,color:"var(--text)",marginTop:2}}>{assignments.length} งาน</div>
         </div>
         <button className="btn btn-gold" onClick={()=>setModal(true)} style={{fontSize:16,padding:"12px 28px"}}>➕ เพิ่มงานใหม่</button>
+      </div>
+      {/* Room filter */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {[{id:"all",label:"🌸 ทุกห้อง"},{id:"r1",label:"🌸 ม.3/1"},{id:"r2",label:"🌿 ม.3/2"}].map(r=>(
+          <button key={r.id} onClick={()=>setSelRoomA(r.id)} className="btn"
+            style={{background:selRoomA===r.id?"rgba(240,160,192,.2)":"rgba(255,255,255,.04)",
+              border:`1px solid ${selRoomA===r.id?"rgba(240,160,192,.5)":"var(--border)"}`,
+              color:selRoomA===r.id?"#f0a0c0":"var(--muted2)",borderRadius:8,padding:"8px 16px",
+              fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{r.label}</button>
+        ))}
       </div>
 
       {CHAPTERS.map(ch=>{
@@ -2230,7 +2245,7 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
             {chA.length===0&&<div style={{color:"var(--muted)",fontSize:13,padding:"8px 0"}}>ยังไม่มีงาน</div>}
             {chA.map(a=>{
               const tm=TYPE_META[a.type]||{};
-              const submittedCount=students.filter(s=>s.submissions?.[a.id]).length;
+              const submittedCount=filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length;
               return(
                 <div key={a.id} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:`${ch.color}25`}}>
                   <div style={{fontSize:24,flexShrink:0}}>{tm.icon||"📄"}</div>
@@ -2238,8 +2253,8 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
                     <div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{a.title}</div>
                     <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{a.desc} · {a.due}</div>
                     <div style={{display:"flex",gap:6,marginTop:6}}>
-                      <span className="badge" style={{background:"rgba(94,200,126,.12)",border:"1px solid rgba(94,200,126,.35)",color:"var(--green)"}}>✓ {submittedCount}/{students.length} คน</span>
-                      {submittedCount<students.length&&<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.25)",color:"var(--red)"}}>⏳ ค้าง {students.length-submittedCount}</span>}
+                      <span className="badge" style={{background:"rgba(94,200,126,.12)",border:"1px solid rgba(94,200,126,.35)",color:"var(--green)"}}>✓ {filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length}/{filteredStudentsA.length} คน</span>
+                      {filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length<filteredStudentsA.length&&<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.25)",color:"var(--red)"}}>⏳ ค้าง {filteredStudentsA.length-filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length}</span>}
                     </div>
                   </div>
                   <div className="mono" style={{color:"#f0a0c0",fontSize:13,flexShrink:0}}>+{a.xp} XP</div>
@@ -2341,6 +2356,7 @@ function TeacherResources({resources,setResources}){
 // ─────────────────────────────────────────────
 function TeacherScores({students,setStudents}){
   const [tab,setTab]=useState("add");
+  const [selRoomFilter,setSelRoomFilter]=useState("all");
   const [targetMode,setTargetMode]=useState("single"); // "single" | "multi" | "all"
   const [selStu,setSelStu]=useState("");
   const [selMulti,setSelMulti]=useState([]); // หลายคน
@@ -2351,6 +2367,7 @@ function TeacherScores({students,setStudents}){
   const [editAct,setEditAct]=useState<any>(null); // {oldName, newName, newChapterId}
 
   function toast(t,isErr=false){setMsg({text:t,err:isErr});setTimeout(()=>setMsg(null),3500);}
+  const filteredStudents=selRoomFilter==="all"?students:students.filter((s:any)=>s.room===selRoomFilter);
 
   function saveEditActivity(){
     if(!editAct)return;
@@ -2378,8 +2395,9 @@ function TeacherScores({students,setStudents}){
     const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
     const logEntry={activity:activityName.trim(),xp:Number(xpAmt),date:today,chapterId:selChapter};
     if(targetMode==="all"){
-      setStudents(prev=>prev.map(s=>({...s,xp:s.xp+Number(xpAmt),xpLog:[...(s.xpLog||[]),logEntry]})));
-      toast(`✅ เพิ่ม ${xpAmt} XP จาก "${activityName}" ให้ทุกคน ${students.length} คน!`);
+      const targets=filteredStudents.map((s:any)=>s.id);
+      setStudents(prev=>prev.map(s=>targets.includes(s.id)?{...s,xp:s.xp+Number(xpAmt),xpLog:[...(s.xpLog||[]),logEntry]}:s));
+      toast(`✅ เพิ่ม ${xpAmt} XP จาก "${activityName}" ให้ ${filteredStudents.length} คน ${selRoomFilter==="all"?"(ทุกห้อง)":selRoomFilter==="r1"?"(ม.3/1)":"(ม.3/2)"}!`);
     } else if(targetMode==="multi"){
       setStudents(prev=>prev.map(s=>selMulti.includes(s.id)?{...s,xp:s.xp+Number(xpAmt),xpLog:[...(s.xpLog||[]),logEntry]}:s));
       toast(`✅ เพิ่ม ${xpAmt} XP จาก "${activityName}" ให้ ${selMulti.length} คน!`);
@@ -2415,6 +2433,16 @@ function TeacherScores({students,setStudents}){
   return(
     <div className="fade-up" style={{padding:20,maxWidth:960,margin:"0 auto"}}>
       <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:16}}>XP MANAGEMENT</div>
+      {/* Room filter */}
+      <div style={{display:"flex",gap:8,marginBottom:14}}>
+        {[{id:"all",label:"🌸 ทุกห้อง"},{id:"r1",label:"🌸 ม.3/1"},{id:"r2",label:"🌿 ม.3/2"}].map(r=>(
+          <button key={r.id} onClick={()=>{setSelRoomFilter(r.id);setSelStu("");setSelMulti([]);}} className="btn"
+            style={{background:selRoomFilter===r.id?"rgba(240,160,192,.2)":"rgba(255,255,255,.04)",
+              border:`1px solid ${selRoomFilter===r.id?"rgba(240,160,192,.5)":"var(--border)"}`,
+              color:selRoomFilter===r.id?"#f0a0c0":"var(--muted2)",borderRadius:8,padding:"8px 16px",
+              fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{r.label}</button>
+        ))}
+      </div>
       <div style={{display:"flex",borderBottom:"1px solid var(--border)",marginBottom:20}}>
         <button style={tabStyle("add")} onClick={()=>setTab("add")}>⭐ เพิ่ม XP</button>
         <button style={tabStyle("summary")} onClick={()=>setTab("summary")}>📊 สรุปรายงาน</button>
@@ -2469,7 +2497,7 @@ function TeacherScores({students,setStudents}){
                 <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>เลือกนักเรียน</label>
                 <select className="input" value={selStu} onChange={e=>setSelStu(e.target.value)}>
                   <option value="">-- เลือกนักเรียน --</option>
-                  {students.map(s=><option key={s.id} value={s.id}>{s.avatar} {s.name} · {s.xp.toLocaleString()} XP</option>)}
+                  {filteredStudents.map((s:any)=><option key={s.id} value={s.id}>{s.avatar} {s.name} · {s.xp.toLocaleString()} XP</option>)}
                 </select>
               </div>
             )}
@@ -2485,7 +2513,7 @@ function TeacherScores({students,setStudents}){
                   </div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:6,maxHeight:260,overflowY:"auto",padding:4}}>
-                  {students.map(s=>{
+                  {filteredStudents.map((s:any)=>{
                     const selected=selMulti.includes(s.id);
                     return(
                       <div key={s.id} onClick={()=>toggleMulti(s.id)}
@@ -2514,14 +2542,14 @@ function TeacherScores({students,setStudents}){
             {targetMode==="all"&&(
               <div style={{background:"rgba(94,200,126,.08)",border:"1px solid rgba(94,200,126,.3)",
                 borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"var(--green)"}}>
-                👥 จะเพิ่ม XP ให้นักเรียนทั้งหมด <strong>{students.length} คน</strong> พร้อมกัน
+                👥 จะเพิ่ม XP ให้นักเรียน <strong>{filteredStudents.length} คน</strong> {selRoomFilter==="all"?"(ทุกห้อง)":selRoomFilter==="r1"?"(ม.3/1)":"(ม.3/2)"}
               </div>
             )}
 
             <button className="btn btn-gold" onClick={doAdd}
               style={{width:"100%",fontSize:17,padding:"15px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
               <span>➕</span>
-              {targetMode==="all"?`เพิ่ม XP ให้ทุกคน (${students.length} คน)`:
+              {targetMode==="all"?`เพิ่ม XP ให้ ${filteredStudents.length} คน ${selRoomFilter==="all"?"ทุกห้อง":selRoomFilter==="r1"?"ม.3/1":"ม.3/2"}`:
                targetMode==="multi"?`เพิ่ม XP ให้ ${selMulti.length} คนที่เลือก`:
                "เพิ่ม XP"}
             </button>
@@ -2674,8 +2702,10 @@ function TeacherGrades({students,setStudents}){
     setSaved(true);setTimeout(()=>setSaved(false),3000);
   }
 
-  const sorted=[...students].sort((a:any,b:any)=>(getTotal(b)??-1)-(getTotal(a)??-1));
-  const withGrades=students.filter((s:any)=>getTotal(s)!==null);
+  const [selRoomG,setSelRoomG]=useState("all");
+  const filteredG=selRoomG==="all"?students:students.filter((s:any)=>s.room===selRoomG);
+  const sorted=[...filteredG].sort((a:any,b:any)=>(getTotal(b)??-1)-(getTotal(a)??-1));
+  const withGrades=filteredG.filter((s:any)=>getTotal(s)!==null);
   const passing=withGrades.filter((s:any)=>parseFloat(getGrade(getTotal(s))||"0")>0).length;
   const avg=withGrades.length>0?Math.round(withGrades.reduce((a:number,s:any)=>a+(getTotal(s)||0),0)/withGrades.length):null;
   const gradeCounts:any={"4.0":0,"3.5":0,"3.0":0,"2.5":0,"2.0":0,"1.5":0,"1.0":0,"0":0};
@@ -2790,6 +2820,16 @@ function TeacherGrades({students,setStudents}){
         <button style={tabStyleG("prepost")} onClick={()=>setTabG("prepost")}>👥 Pre/Post-test</button>
       </div>
 
+      {/* Room filter */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {[{id:"all",label:"🌸 ทุกห้อง"},{id:"r1",label:"🌸 ม.3/1"},{id:"r2",label:"🌿 ม.3/2"}].map(r=>(
+          <button key={r.id} onClick={()=>setSelRoomG(r.id)} className="btn"
+            style={{background:selRoomG===r.id?"rgba(240,160,192,.2)":"rgba(255,255,255,.04)",
+              border:`1px solid ${selRoomG===r.id?"rgba(240,160,192,.5)":"var(--border)"}`,
+              color:selRoomG===r.id?"#f0a0c0":"var(--muted2)",borderRadius:8,padding:"8px 16px",
+              fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{r.label}</button>
+        ))}
+      </div>
       {tabG==="score"&&(
         <div>
           <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:16}}>📊 สรุปคะแนนรวม</div>
@@ -2923,7 +2963,7 @@ function TeacherGrades({students,setStudents}){
                 </tr>
               </thead>
               <tbody>
-                {students.map((st:any)=>{
+                {filteredG.map((st:any)=>{
                   const pp=ppScores[st.id]||{pre:null,post:null};
                   const pg=pp.pre!==null?getPPGroup(pp.pre):null;
                   const qg=pp.post!==null?getPPGroup(pp.post):null;
