@@ -44,6 +44,8 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans Thai',sans-se
 .btn-red{background:linear-gradient(135deg,#7a2020,#e86060);color:#fff;padding:9px 20px;border-radius:5px;text-transform:uppercase;font-size:13px}
 .btn-purple{background:linear-gradient(135deg,#3a2060,#aa8ff0);color:#fff;padding:10px 22px;border-radius:5px;text-transform:uppercase;font-size:14px}
 .btn-purple:hover{box-shadow:0 0 16px rgba(170,143,240,.45)}
+.btn-pink{background:linear-gradient(135deg,#901850,#d04080,#e87060);color:#fff;padding:11px 26px;border-radius:5px;text-transform:uppercase;font-size:15px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;border:none;cursor:pointer;width:100%}
+.btn-pink:hover{box-shadow:0 0 20px rgba(200,60,100,.5)}
 .btn-outline{background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:8px 18px;border-radius:5px;text-transform:uppercase;font-size:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s}
 .btn-outline:hover{border-color:var(--gold);color:var(--gold)}
 .btn-ghost{background:rgba(255,255,255,.09);border:1px solid var(--border);color:var(--muted2);padding:7px 16px;border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all .2s}
@@ -835,10 +837,10 @@ function LoginScreen({students,onLogin}){
       <div style={{position:"relative",zIndex:1,width:"100%",maxWidth:420}}>
         <div className="fade-up" style={{textAlign:"center",marginBottom:32}}>
           <div style={{display:"flex",gap:14,justifyContent:"center",fontSize:52,marginBottom:12,animation:"float 3s ease-in-out infinite"}}>
-            <span>⚡</span><span>🔥</span><span>💧</span>
+            <span>🔬</span><span>🧬</span><span>🌸</span>
           </div>
-          <div className="cond" style={{fontSize:56,fontWeight:900,letterSpacing:6,color:"#f0a0c0",lineHeight:1,textShadow:"0 0 40px rgba(232,188,85,.6)"}}>PHYSICS</div>
-          <div className="cond" style={{fontSize:22,fontWeight:600,letterSpacing:14,color:"#8a4060",marginTop:2}}>BATTLEGROUND</div>
+          <div className="cond" style={{fontSize:56,fontWeight:900,letterSpacing:6,color:"#f0a0c0",lineHeight:1,textShadow:"0 0 40px rgba(240,100,180,.6)"}}>SCIENCE</div>
+          <div className="cond" style={{fontSize:22,fontWeight:600,letterSpacing:10,color:"#8a4060",marginTop:2}}>BATTLEGROUND</div>
           <div className="mono" style={{fontSize:11,color:"var(--muted)",marginTop:8,letterSpacing:3}}>── SAKURA SEASON 2568 ──</div>
         </div>
         <div className="card fade-up" style={{animationDelay:".1s",background:"rgba(18,36,62,.9)",backdropFilter:"blur(20px)",border:"1px solid rgba(232,188,85,.3)"}}>
@@ -3233,6 +3235,10 @@ function TeacherAirdrop({students,setPendingAirdrop,setStudents}){
 // GOOGLE APPS SCRIPT API — แก้ไขแล้ว
 // ─────────────────────────────────────────────
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwoaVGfEoN7CTS4hcIhdZ09JW7DH3e87gT9De-xkhOZOv-4lLKebsxVgm7iasVElKCr/exec";
+const img1 = "https://drive.google.com/uc?export=view&id=17fdYhXvfxqVa9_737WvrRsunONhd3Vrd";
+const img2 = "https://i.postimg.cc/RVGwSXJh/a8d4de59513d2b1ca0a346c0c7fd039c.jpg";
+const img3 = "https://i.postimg.cc/13kXsqB0/wp13416836.png";
+
 
 async function gasGet(){
   try{
