@@ -82,6 +82,10 @@ const XP_RANKS = [
   {minXP:1250,maxXP:1374,label:"BRONZE II",grade:"1",  color:"#ff9840",icon:"🥉",desc:"อ่อนมาก",   scoreRange:"50–54"},
   {minXP:0,   maxXP:1249,label:"IRON",     grade:"0",  color:"#9aacbf",icon:"⚙️",desc:"ไม่ผ่าน",   scoreRange:"0–49"},
 ];
+const ROOMS = [
+  {id:"r1",label:"ม.3/1",color:"#f0a0c0"},
+  {id:"r2",label:"ม.3/2",color:"#7de8d0"},
+];
 let MAX_XP = 2500;
 
 const AIRDROP_POOL = [
@@ -197,6 +201,27 @@ function playAirdropSound(){
 function SakuraDayBackground(){
   return(
     <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
+      {/* ภาพพื้นหลังจริง */}
+      <div style={{position:"absolute",inset:0,
+        backgroundImage:`url("${img2}")`,
+        backgroundSize:"cover",backgroundPosition:"center",backgroundRepeat:"no-repeat"}}/>
+      {/* overlay เบาๆ ให้อ่านง่าย */}
+      <div style={{position:"absolute",inset:0,background:"rgba(255,240,250,.18)"}}/>
+      {/* กลีบซากุระร่วง */}
+      {Array.from({length:20},(_,i)=>(
+        <div key={i} style={{position:"absolute",borderRadius:"50% 0",
+          width:5+i*.3,height:5+i*.3,
+          background:`rgba(255,${140+i*4},188,.82)`,
+          left:`${i*5}%`,top:"-10px",
+          animation:`fall ${3+i*.3}s linear infinite`,
+          animationDelay:`${i*.45}s`}}/>
+      ))}
+    </div>
+  );
+}
+function SakuraDayBackground_UNUSED(){
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
       {/* ฟ้าสีฟ้าใส กลางวัน */}
       <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,#87ceeb 0%,#b8e4f7 35%,#d4f0fa 55%,#e8f8e8 72%,#c8e8c0 85%,#a8d898 100%)"}}/>
       {/* เมฆ */}
@@ -279,6 +304,44 @@ function SakuraDayBackground(){
 
 // ── กลางคืน: หน้าอื่นๆ ──
 function SakuraBackground(){
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
+      {/* ภาพพื้นหลังกลางคืน */}
+      <div style={{position:"absolute",inset:0,
+        backgroundImage:`url("${img3}")`,
+        backgroundSize:"cover",backgroundPosition:"center",backgroundRepeat:"no-repeat"}}/>
+      {/* overlay มืดเล็กน้อยให้อ่านง่าย */}
+      <div style={{position:"absolute",inset:0,background:"rgba(5,2,20,.45)"}}/>
+      {/* ดาวระยิบระยับ */}
+      {Array.from({length:60},(_,i)=>(
+        <div key={i} style={{position:"absolute",borderRadius:"50%",background:"#fff",
+          width:Math.random()*2+.5,height:Math.random()*2+.5,
+          left:`${(i*13)%100}%`,top:`${(i*7)%50}%`,
+          opacity:(i%5)*.15+.1,
+          animation:`pulse ${1.5+(i%5)*.5}s ease-in-out infinite`,
+          animationDelay:`${(i%8)*.5}s`}}/>
+      ))}
+      {/* กลีบร่วง */}
+      {Array.from({length:15},(_,i)=>(
+        <div key={i} style={{position:"absolute",borderRadius:"50% 0",
+          width:4+i*.4,height:4+i*.4,
+          background:"rgba(245,140,175,.75)",
+          left:`${i*7}%`,top:"-10px",
+          animation:`fall ${4.5+i*.4}s linear infinite`,
+          animationDelay:`${i*.6}s`}}/>
+      ))}
+      {/* หิ่งห้อย */}
+      {Array.from({length:8},(_,i)=>(
+        <div key={i} style={{position:"absolute",width:4,height:4,borderRadius:"50%",
+          background:"#a8ff60",boxShadow:"0 0 6px #a8ff60",
+          left:`${15+i*10}%`,bottom:`${20+i*5}%`,
+          animation:`pulse ${1.5+i*.4}s ease-in-out infinite`,
+          animationDelay:`${i*.8}s`}}/>
+      ))}
+    </div>
+  );
+}
+function SakuraBackground_UNUSED(){
   return(
     <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
       <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,#050210 0%,#100530 22%,#1e0848 40%,#3d1268 56%,#8a2468 70%,#c04858 82%,#d87048 90%,#e8a848 96%,#f5d060 100%)"}}/>
@@ -3319,6 +3382,7 @@ export default function App(){
   const{role,userId}=auth||{};
   const currentStudent=students.find(s=>s.id===userId);
   const navUser=role==="teacher"?{name:"ครูผู้สอน",avatar:"👩‍✈️",xp:9999}:currentStudent;
+  const currentRoom=currentStudent?.room;
 
   if(!auth)return(<><style>{G}</style><LoginScreen students={students} onLogin={handleLogin}/></>);
 
