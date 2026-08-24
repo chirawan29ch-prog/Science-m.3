@@ -113,10 +113,10 @@ function getRank(xp){return XP_RANKS.find(r=>xp>=r.minXP)||XP_RANKS[XP_RANKS.len
 // MOCK DATA
 // ─────────────────────────────────────────────
 const INIT_ASSIGNMENTS = [
-  {id:"A1",chapterId:"CH1",title:"ใบกิจกรรม 1.1: กระบวนการทางวิทยาศาสตร์",xp:200,due:"30 พ.ค. 2568",desc:"ฝึกทักษะการสังเกตและตั้งสมมติฐาน",type:"worksheet",createdAt:"20 พ.ค. 2568"},
-  {id:"A2",chapterId:"CH2",title:"ใบกิจกรรม 2.1: การถ่ายทอดลักษณะทางพันธุกรรม",xp:250,due:"15 มิ.ย. 2568",desc:"Mendel Laws of Inheritance",type:"worksheet",createdAt:"10 มิ.ย. 2568"},
-  {id:"A3",chapterId:"CH3",title:"Lab 3.1: สมบัติของคลื่น",xp:200,due:"30 มิ.ย. 2568",desc:"การสะท้อน หักเห และเลี้ยวเบน",type:"lab",createdAt:"25 มิ.ย. 2568"},
-  {id:"A4",chapterId:"CH4",title:"ใบกิจกรรม 4.1: ระบบสุริยะ",xp:200,due:"20 ก.ค. 2568",desc:"ดาวเคราะห์และวงโคจร",type:"worksheet",createdAt:"15 ก.ค. 2568"},
+  {id:"A1",chapterId:"CH1",title:"ใบกิจกรรม 1.1: กระบวนการทางวิทยาศาสตร์",xp:200,due:"30 พ.ค. 2568",desc:"ฝึกทักษะการสังเกตและตั้งสมมติฐาน",type:"worksheet",phase:"before",createdAt:"20 พ.ค. 2568"},
+  {id:"A2",chapterId:"CH2",title:"ใบกิจกรรม 2.1: การถ่ายทอดลักษณะทางพันธุกรรม",xp:250,due:"15 มิ.ย. 2568",desc:"Mendel Laws of Inheritance",type:"worksheet",phase:"before",createdAt:"10 มิ.ย. 2568"},
+  {id:"A3",chapterId:"CH3",title:"Lab 3.1: สมบัติของคลื่น",xp:200,due:"30 มิ.ย. 2568",desc:"การสะท้อน หักเห และเลี้ยวเบน",type:"lab",phase:"before",createdAt:"25 มิ.ย. 2568"},
+  {id:"A4",chapterId:"CH4",title:"ใบกิจกรรม 4.1: ระบบสุริยะ",xp:200,due:"20 ก.ค. 2568",desc:"ดาวเคราะห์และวงโคจร",type:"worksheet",phase:"before",createdAt:"15 ก.ค. 2568"},
 ];
 const INIT_RESOURCES = [];
 const INIT_STUDENTS = [
@@ -901,7 +901,7 @@ function LoginScreen({students,onLogin}){
 // TOP NAV
 // ─────────────────────────────────────────────
 function TopNav({user,role,page,setPage,onLogout,room}:any){
-  const sTabs=[{id:"dashboard",label:"DASHBOARD"},{id:"resources",label:"เนื้อหา"},{id:"assignments",label:"ส่งงาน"},{id:"ranking",label:"TOP 3"},{id:"inventory",label:"AIRDROP"},{id:"settings",label:"ตั้งค่า"}];
+  const sTabs=[{id:"dashboard",label:"DASHBOARD"},{id:"resources",label:"บทเรียน"},{id:"assignments",label:"ส่งงาน"},{id:"ranking",label:"TOP 3"},{id:"inventory",label:"AIRDROP"},{id:"settings",label:"ตั้งค่า"}];
   const tTabs=[{id:"overview",label:"OVERVIEW"},{id:"students",label:"STUDENTS"},{id:"t-assignments",label:"📋 งาน"},{id:"t-resources",label:"📁 ไฟล์"},{id:"t-scores",label:"⭐ XP"},{id:"t-exam",label:"📝 สอบ"},{id:"t-grades",label:"📊 คะแนน"},{id:"t-airdrop",label:"📦 AIRDROP"},{id:"ranking",label:"RANKING"}];
   const tabs=role==="teacher"?tTabs:sTabs;
   return(
@@ -937,7 +937,7 @@ function TopNav({user,role,page,setPage,onLogout,room}:any){
 // ─────────────────────────────────────────────
 const PAGE_META = {
   dashboard:      {label:"DASHBOARD",    back:null},
-  resources:      {label:"เนื้อหา / สไลด์",back:"dashboard"},
+  resources:      {label:"บทเรียน / สไลด์",back:"dashboard"},
   assignments:    {label:"ส่งงาน",        back:"dashboard"},
   ranking:        {label:"TOP 3 RANKING", back:"dashboard"},
   inventory:      {label:"AIRDROP รางวัล",back:"dashboard"},
@@ -976,12 +976,13 @@ function PageHeader({page,setPage}){
 // ─────────────────────────────────────────────
 function ScoreBreakdown({student, assignments}){
   const MAX_HALF=35, MAX_MID=15, MAX_FINAL=15;
-  const half=Math.ceil((assignments||[]).length/2);
-  const first=(assignments||[]).slice(0,half);
-  const second=(assignments||[]).slice(half);
-  function earnedXP(list){return list.reduce((s,a)=>{const sub=student.submissions?.[a.id];return s+(sub?sub.xpEarned||0:0);},0);}
-  const score1=Math.min(MAX_HALF,Math.round(earnedXP(first)/25));
-  const score2=Math.min(MAX_HALF,Math.round(earnedXP(second)/25));
+  // แบ่งคะแนนเก็บก่อน/หลังกลางภาคตามแท็กของใบงาน+กิจกรรม (ไม่ใช้เกณฑ์ XP สะสมอีกต่อไป)
+  const before=(assignments||[]).filter(a=>(a.phase||"before")==="before");
+  const after=(assignments||[]).filter(a=>(a.phase||"before")==="after");
+  function earnedXP(list){return list.reduce((s,a)=>{const sub=student.submissions?.[a.id];return s+(sub?.graded?sub.xpEarned||0:0);},0);}
+  const logXP=(phase)=>(student.xpLog||[]).reduce((s,l)=>(l.phase||"before")===phase?s+(l.xp||0):s,0);
+  const score1=Math.min(MAX_HALF,Math.round((earnedXP(before)+logXP("before"))/25));
+  const score2=Math.min(MAX_HALF,Math.round((earnedXP(after)+logXP("after"))/25));
   const scoreMid=student.midterm, scoreFinal=student.final;
   const totalAnnounced=score1+score2+(scoreMid!==null?scoreMid:0)+(scoreFinal!==null?scoreFinal:0);
   const maxAnnounced=MAX_HALF+MAX_HALF+(scoreMid!==null?MAX_MID:0)+(scoreFinal!==null?MAX_FINAL:0);
@@ -1107,39 +1108,7 @@ function StudentDashboard({student,students,assignments,setPage,setStudents}){
         </div>
       </div>
       <ScoreBreakdown student={student} assignments={assignments}/>
-      {/* XP Activity Log */}
-      {(student.xpLog||[]).length>0&&(
-        <div className="card" style={{marginBottom:16}}>
-          <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:14}}>⭐ ประวัติ XP ที่ได้รับ</div>
-          <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {[...(student.xpLog||[])].reverse().map((log,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",
-                background:"rgba(232,188,85,.06)",border:"1px solid rgba(232,188,85,.2)",borderRadius:8}}>
-                <div style={{fontSize:20}}>⭐</div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:14,fontWeight:600,color:"var(--text)"}}>{log.activity}</div>
-                  <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{log.date}</div>
-                </div>
-                <div className="mono" style={{fontSize:16,fontWeight:700,color:"#f0a0c0"}}>+{log.xp} XP</div>
-              </div>
-            ))}
-          </div>
-          <div style={{marginTop:12,padding:"10px 14px",background:"rgba(232,188,85,.08)",
-            border:"1px solid rgba(232,188,85,.22)",borderRadius:8,
-            display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:13,color:"var(--muted2)"}}>รวม XP จากกิจกรรมพิเศษ</span>
-            <span className="mono" style={{fontSize:15,color:"#f0a0c0",fontWeight:700}}>
-              {(student.xpLog||[]).reduce((s,l)=>s+l.xp,0).toLocaleString()} XP
-            </span>
-          </div>
-        </div>
-      )}
       <GradeTable/>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginTop:16}}>
-        <button className="btn btn-cyan" onClick={()=>setPage("assignments")} style={{padding:14}}>📋 ดูงานทั้งหมด</button>
-        <button className="btn-outline" onClick={()=>setPage("resources")} style={{padding:14}}>📚 เนื้อหา/สไลด์</button>
-        <button className="btn-outline" onClick={()=>setPwModal(true)} style={{padding:14,borderColor:"rgba(232,188,85,.45)",color:"#f0a0c0"}}>🔐 เปลี่ยนรหัสผ่าน</button>
-      </div>
     </div>
   );
 }
@@ -1147,6 +1116,8 @@ function StudentDashboard({student,students,assignments,setPage,setStudents}){
 // ─────────────────────────────────────────────
 // STUDENT: ASSIGNMENTS
 // ─────────────────────────────────────────────
+function xpToScore(xp){return Math.round((xp||0)/25);}
+
 function StudentAssignments({student,students,assignments,setStudents}){
   const [uploadModal,setUploadModal]=useState(null);
   const [driveLink,setDriveLink]=useState("");
@@ -1169,14 +1140,37 @@ function StudentAssignments({student,students,assignments,setStudents}){
     }));
   }
   function replaceFile(id){removeSubmission(id);const a=assignments.find(x=>x.id===id);if(a)setUploadModal(a);}
+
+  // ── รวมภาระงาน + กิจกรรมในห้องเรียน แล้วแบ่งกลุ่มตามแท็กก่อน/หลังกลางภาค ──
+  const chOf=(id)=>CHAPTERS.find(c=>c.id===id)||CHAPTERS[0];
+  const taskItems=assignments.map(a=>({
+    kind:"task",key:a.id,a,ch:chOf(a.chapterId),
+    phase:a.phase||"before",
+    sub:student.submissions?.[a.id],
+    tm:TYPE_META[a.type]||{}
+  }));
+  const allActNames=[...new Set((students||[]).flatMap((st:any)=>(st.xpLog||[]).map((l:any)=>l.activity)))];
+  const actItems=allActNames.map((actName:any)=>{
+    const allEntries=(students||[]).flatMap((st:any)=>(st.xpLog||[]).filter((l:any)=>l.activity===actName));
+    const fullXp=allEntries.reduce((m:number,l:any)=>Math.max(m,l.xp||0),0);
+    const phase=allEntries[0]?.phase||"before";
+    const chapterId=allEntries[0]?.chapterId||"CH1";
+    const myLog=(student.xpLog||[]).find((l:any)=>l.activity===actName);
+    return{kind:"activity",key:"act_"+actName,actName,fullXp,phase,ch:chOf(chapterId),myLog};
+  });
+  const allItems=[...taskItems,...actItems];
+  const groups=[
+    {phase:"before",label:"ก่อนกลางภาค",dot:"#a78bfa",tint:"rgba(167,139,250,.15)",text:"#a78bfa"},
+    {phase:"after", label:"หลังกลางภาค",dot:"#f472b6",tint:"rgba(244,114,182,.15)",text:"#f472b6"},
+  ];
+
   return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
       {uploadModal&&(
         <div className="overlay">
           <div className="card card-cyan" style={{width:"100%",maxWidth:480}}>
             <div className="cond" style={{fontSize:22,color:"var(--cyan)",letterSpacing:2,marginBottom:4}}>📎 ส่งงาน</div>
-            <div style={{color:"var(--muted2)",fontSize:13,marginBottom:4}}>{uploadModal.title}</div>
-            <div className="mono" style={{color:"#f0a0c0",fontSize:13,marginBottom:20}}>+{uploadModal.xp} XP</div>
+            <div style={{color:"var(--muted2)",fontSize:13,marginBottom:4}}>{uploadModal.title} <span style={{color:"var(--muted)"}}>(เต็ม {uploadModal.xp} XP / {xpToScore(uploadModal.xp)} คะแนน)</span></div>
             <div style={{marginBottom:14}}>
               <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>🔗 ลิงก์ Google Drive</label>
               <input className="input" value={driveLink} onChange={e=>setDriveLink(e.target.value)}
@@ -1187,137 +1181,83 @@ function StudentAssignments({student,students,assignments,setStudents}){
             </div>
             <div style={{display:"flex",gap:10}}>
               <button className="btn btn-cyan" onClick={submitWork} disabled={!driveLink.trim()}
-                style={{flex:1,opacity:driveLink.trim()?1:.4}}>✅ ส่งงาน (+{uploadModal.xp} XP)</button>
+                style={{flex:1,opacity:driveLink.trim()?1:.4}}>✅ ส่งงาน</button>
               <button className="btn-outline" onClick={()=>setUploadModal(null)} style={{flex:1}}>ยกเลิก</button>
             </div>
           </div>
         </div>
       )}
       <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>MISSION BOARD — {assignments.length} OBJECTIVES</div>
-      {CHAPTERS.map(ch=>{
-        const chA=assignments.filter(a=>a.chapterId===ch.id);
-        const chLogs=(student.xpLog||[]).filter((l:any)=>(l.chapterId||'CH1')===ch.id);
-        const allChActNames=[...new Set((students||[]).flatMap((st:any)=>(st.xpLog||[]).filter((l:any)=>(l.chapterId||"CH1")===ch.id).map((l:any)=>l.activity)))];
-        if(!chA.length&&!chLogs.length&&allChActNames.length===0)return null;
+      {groups.map(g=>{
+        const items=allItems.filter((it:any)=>it.phase===g.phase);
+        if(items.length===0)return null;
         return(
-          <div key={ch.id} style={{marginBottom:32}}>
-            {/* ── Chapter Header ── */}
-            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,paddingBottom:10,borderBottom:`2px solid ${ch.color}50`}}>
-              <span style={{fontSize:28}}>{ch.icon}</span>
-              <div>
-                <div className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:2}}>{ch.label}</div>
-                <div className="cond" style={{fontSize:24,fontWeight:700,color:ch.color}}>{ch.title}</div>
-              </div>
+          <div key={g.phase} style={{marginBottom:32}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,paddingBottom:10,borderBottom:`2px solid ${g.dot}50`}}>
+              <span style={{width:12,height:12,borderRadius:3,background:g.dot,display:"inline-block"}}></span>
+              <div className="cond" style={{fontSize:22,fontWeight:700,color:g.text,letterSpacing:1}}>{g.label}</div>
+              <span className="badge" style={{background:g.tint,border:`1px solid ${g.dot}66`,color:g.text,fontSize:9}}>{items.length} รายการ</span>
             </div>
-
-            {/* ── ภาระงาน ── */}
-            {chA.length>0&&(
-              <div style={{marginBottom:16}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,paddingLeft:4}}>
-                  <span style={{fontSize:16}}>📝</span>
-                  <div className="mono" style={{fontSize:10,color:"var(--muted2)",letterSpacing:2,fontWeight:700}}>ภาระงาน</div>
-                  <span className="badge" style={{background:`${ch.color}15`,border:`1px solid ${ch.color}40`,color:ch.color,fontSize:9}}>{chA.length} งาน</span>
-                </div>
-                {chA.map(a=>{
-                  const sub=student.submissions?.[a.id];const tm=TYPE_META[a.type]||{};
-                  return(
-                    <div key={a.id} className="card" style={{display:"flex",gap:16,alignItems:"center",marginBottom:8,marginLeft:16,
-                      borderColor:sub?`${ch.color}50`:"var(--border)",background:sub?`linear-gradient(135deg,var(--bg2),${ch.bg})`:"var(--bg2)"}}>
-                      <div style={{fontSize:28,flexShrink:0}}>{tm.icon||"📄"}</div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{display:"flex",gap:8,marginBottom:6,flexWrap:"wrap"}}>
-                          <span className="badge" style={{background:`${tm.color}20`,border:`1px solid ${tm.color}50`,color:tm.color}}>{tm.label}</span>
-                          {sub?<span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ ส่งแล้ว</span>
-                             :<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.3)",color:"var(--red)"}}>⏳ ยังไม่ส่ง</span>}
-                        </div>
-                        <div style={{fontSize:14,fontWeight:600,color:"#fff",marginBottom:4}}>{a.title}</div>
-                        <div style={{fontSize:12,color:"var(--muted)"}}>{a.desc} · ครบกำหนด {a.due}</div>
-                        {sub&&<div style={{fontSize:12,marginTop:4}}>
-                          <a href={sub.file} target="_blank" rel="noreferrer" style={{color:"var(--cyan)"}}>🔗 ดูไฟล์งาน</a>
-                          <span style={{color:"var(--muted)"}}> · {sub.submittedAt}</span>
-                          <span style={{marginLeft:8,color:sub.graded?"#f0a0c0":"var(--muted)",fontFamily:"'Share Tech Mono',monospace",fontSize:11}}>
-                            {sub.graded?`⭐ ${sub.xpEarned} / ${sub.maxXp||a.xp} XP`:"⏳ รอครูตรวจ"}
-                          </span>
-                        </div>}
+            {items.map((it:any)=>{
+              if(it.kind==="task"){
+                const a=it.a,sub=it.sub,tm=it.tm,ch=it.ch;
+                return(
+                  <div key={it.key} className="card" style={{display:"flex",gap:16,alignItems:"center",marginBottom:8,
+                    borderColor:sub?`${ch.color}50`:"var(--border)",background:sub?`linear-gradient(135deg,var(--bg2),${ch.bg})`:"var(--bg2)"}}>
+                    <div style={{fontSize:28,flexShrink:0}}>{tm.icon||"📄"}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",gap:8,marginBottom:6,flexWrap:"wrap"}}>
+                        <span className="badge" style={{background:`${ch.color}18`,border:`1px solid ${ch.color}45`,color:ch.color,fontSize:9}}>{ch.icon} {ch.label}</span>
+                        <span className="badge" style={{background:`${tm.color}20`,border:`1px solid ${tm.color}50`,color:tm.color}}>{tm.label}</span>
+                        {sub?<span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ ส่งแล้ว</span>
+                           :<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.3)",color:"var(--red)"}}>⏳ ยังไม่ส่ง</span>}
                       </div>
-                      <div style={{textAlign:"center",flexShrink:0}}><div className="mono" style={{fontSize:14,color:"#f0a0c0",fontWeight:700}}>+{a.xp}</div><div style={{fontSize:10,color:"var(--muted)"}}>XP</div></div>
-                      <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
-                        {!sub&&<button className="btn btn-cyan" onClick={()=>openUpload(a)} style={{padding:"8px 14px",fontSize:12}}>📎 แนบลิงก์</button>}
-                        {sub&&<button className="btn-ghost" onClick={()=>replaceFile(a.id)} style={{fontSize:11}}>🔄 เปลี่ยน</button>}
-                        {sub&&<button className="btn btn-red" onClick={()=>removeSubmission(a.id)} style={{padding:"6px 12px",fontSize:11}}>🗑 ลบ</button>}
-                      </div>
+                      <div style={{fontSize:14,fontWeight:600,color:"#fff",marginBottom:4}}>{a.title} <span style={{fontSize:12,color:"var(--muted)",fontWeight:400}}>(เต็ม {a.xp} XP / {xpToScore(a.xp)} คะแนน)</span></div>
+                      <div style={{fontSize:12,color:"var(--muted)"}}>{a.desc} · ครบกำหนด {a.due}</div>
+                      {sub&&<div style={{fontSize:12,marginTop:4}}>
+                        <a href={sub.file} target="_blank" rel="noreferrer" style={{color:"var(--cyan)"}}>🔗 ดูไฟล์งาน</a>
+                        <span style={{color:"var(--muted)"}}> · {sub.submittedAt}</span>
+                        <span style={{marginLeft:8,color:sub.graded?"#f0a0c0":"var(--muted)",fontFamily:"'Share Tech Mono',monospace",fontSize:11}}>
+                          {sub.graded?`${sub.xpEarned} XP (${xpToScore(sub.xpEarned)} คะแนน)`:"⏳ รอครูตรวจ"}
+                        </span>
+                      </div>}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* ── กิจกรรมในห้องเรียน ── */}
-            {(()=>{
-              const allChActNames=[...new Set(
-                (students||[]).flatMap((st:any)=>(st.xpLog||[])
-                  .filter((l:any)=>(l.chapterId||"CH1")===ch.id)
-                  .map((l:any)=>l.activity))
-              )];
-              if(allChActNames.length===0&&chLogs.length===0)return null;
-              const allActs=[...new Set([...allChActNames,...chLogs.map((l:any)=>l.activity)])];
-              if(allActs.length===0)return null;
-              return(
-                <div style={{marginBottom:8}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,paddingLeft:4}}>
-                    <span style={{fontSize:16}}>🏫</span>
-                    <div className="mono" style={{fontSize:10,color:"#aa8ff0",letterSpacing:2,fontWeight:700}}>กิจกรรมในห้องเรียน</div>
-                    <span className="badge" style={{background:"rgba(170,143,240,.2)",border:"1px solid rgba(170,143,240,.4)",color:"#aa8ff0",fontSize:9}}>{allActs.length} กิจกรรม</span>
+                    <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
+                      {!sub&&<button className="btn btn-cyan" onClick={()=>openUpload(a)} style={{padding:"8px 14px",fontSize:12}}>📎 แนบลิงก์</button>}
+                      {sub&&<button className="btn-ghost" onClick={()=>replaceFile(a.id)} style={{fontSize:11}}>🔄 เปลี่ยน</button>}
+                      {sub&&<button className="btn btn-red" onClick={()=>removeSubmission(a.id)} style={{padding:"6px 12px",fontSize:11}}>🗑 ลบ</button>}
+                    </div>
                   </div>
-                  {allActs.map((actName:any,i:number)=>{
-                    const myLog=chLogs.find((l:any)=>l.activity===actName);
-                    return(
-                      <div key={i} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,marginLeft:16,
-                        borderColor:myLog?"rgba(170,143,240,.3)":"rgba(232,96,96,.25)",
-                        background:myLog?"var(--bg2)":"rgba(232,96,96,.04)"}}>
-                        <div style={{fontSize:22}}>{myLog?"⭐":"⏳"}</div>
-                        <div style={{flex:1}}>
-                          {myLog
-                            ?<span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)",marginBottom:4,display:"inline-block"}}>✓ ได้รับแล้ว</span>
-                            :<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.3)",color:"var(--red)",marginBottom:4,display:"inline-block"}}>⏳ ค้างส่ง</span>
-                          }
-                          <div style={{fontSize:13,fontWeight:600,color:myLog?"#fff":"#f5b8b8",marginTop:3}}>{actName}</div>
-                          {myLog
-                            ?<div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{myLog.date}</div>
-                            :<div style={{fontSize:11,color:"var(--red)",marginTop:2}}>กรุณาติดต่อส่งงานกับครู</div>
-                          }
+                );
+              }
+              const{actName,fullXp,ch,myLog}=it;
+              return(
+                <div key={it.key} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,
+                  borderColor:myLog?"rgba(170,143,240,.3)":"var(--border)",
+                  background:myLog?"var(--bg2)":"rgba(232,96,96,.04)"}}>
+                  <div style={{fontSize:26,flexShrink:0}}>🏫</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",gap:8,marginBottom:6,flexWrap:"wrap"}}>
+                      <span className="badge" style={{background:`${ch.color}18`,border:`1px solid ${ch.color}45`,color:ch.color,fontSize:9}}>{ch.icon} {ch.label}</span>
+                      <span className="badge" style={{background:"rgba(170,143,240,.2)",border:"1px solid rgba(170,143,240,.4)",color:"#aa8ff0",fontSize:9}}>กิจกรรม</span>
+                      {myLog?<span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ ส่งแล้ว</span>
+                            :<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.3)",color:"var(--red)"}}>⏳ ยังไม่ส่ง</span>}
+                    </div>
+                    <div style={{fontSize:14,fontWeight:600,color:myLog?"#fff":"#f5b8b8",marginBottom:4}}>{actName} <span style={{fontSize:12,color:"var(--muted)",fontWeight:400}}>(เต็ม {fullXp} XP / {xpToScore(fullXp)} คะแนน)</span></div>
+                    {myLog
+                      ?<div style={{fontSize:12,marginTop:4}}>
+                          <span style={{color:"var(--muted)"}}>{myLog.date}</span>
+                          <span style={{marginLeft:8,color:"#f0a0c0",fontFamily:"'Share Tech Mono',monospace",fontSize:11}}>{myLog.xp} XP ({xpToScore(myLog.xp)} คะแนน)</span>
                         </div>
-                        {myLog
-                          ?<div className="mono" style={{fontSize:16,fontWeight:700,color:"#f0a0c0"}}>+{myLog.xp} XP</div>
-                          :<div className="mono" style={{fontSize:14,color:"var(--muted)"}}>— XP</div>
-                        }
-                      </div>
-                    );
-                  })}
+                      :<div style={{fontSize:11,color:"var(--red)",marginTop:2}}>กรุณาติดต่อครู</div>
+                    }
+                  </div>
                 </div>
               );
-            })()}
+            })}
           </div>
         );
       })}
-{/* กิจกรรมเก่าที่ไม่มี chapterId ถูก default ไป CH1 แล้ว ไม่ต้องแสดง section นี้อีก */}
-      {/* ── XP รวมทั้งหมด ── */}
-      {(()=>{
-        const xpFromSubs=Object.values(student.submissions||{}).reduce((s:number,sub:any)=>s+(sub?.graded?sub.xpEarned||0:0),0);
-        const xpFromLog=(student.xpLog||[]).reduce((s:number,l:any)=>s+l.xp,0);
-        const total=xpFromSubs+xpFromLog;
-        if(total===0)return null;
-        return(
-          <div style={{padding:"14px 18px",background:"rgba(232,188,85,.08)",border:"1px solid rgba(232,188,85,.3)",
-            borderRadius:10,display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8,marginBottom:20}}>
-            <div>
-              <div style={{fontSize:13,color:"var(--muted2)"}}>XP รวมทั้งหมด</div>
-              <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>งานส่ง {xpFromSubs.toLocaleString()} + กิจกรรม {xpFromLog.toLocaleString()} XP</div>
-            </div>
-            <div className="mono" style={{fontSize:24,fontWeight:700,color:"#f0a0c0"}}>{total.toLocaleString()} XP</div>
-          </div>
-        );
-      })()}
     </div>
   );
 }
@@ -1326,7 +1266,7 @@ function StudentResources({resources}){
   const ti={pdf:"📄",ppt:"📊",doc:"📝",img:"🖼️",zip:"📦",link:"🔗"};
   return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
-      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>📚 เนื้อหาและสไลด์</div>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>📚 บทเรียนและสไลด์</div>
       {CHAPTERS.map(ch=>{const chR=resources.filter(r=>r.chapterId===ch.id);return(
         <div key={ch.id} style={{marginBottom:24}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${ch.color}35`}}>
@@ -1890,11 +1830,10 @@ function TeacherStudents({students,assignments,setStudents}){
         <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:14}}>SUBMISSION STATUS</div>
         {assignments.map(a=>{const sub=s.submissions?.[a.id];const tm=TYPE_META[a.type]||{};return(
           <div key={a.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>
-            <span>{tm.icon||"📄"}</span><span style={{flex:1,fontSize:13}}>{a.title}</span>
-            <span className="mono" style={{fontSize:11,color:"#f0a0c0"}}>+{a.xp} XP</span>
+            <span>{tm.icon||"📄"}</span><span style={{flex:1,fontSize:13}}>{a.title} <span style={{color:"var(--muted)",fontSize:11}}>(เต็ม {a.xp} XP / {xpToScore(a.xp)} คะแนน)</span></span>
             {sub?<>
               <a href={sub.file} target="_blank" rel="noreferrer" style={{fontSize:11,color:"var(--cyan)"}}>🔗 ดูงาน</a>
-              <span className="mono" style={{fontSize:11,color:"#f0a0c0"}}>{sub.xpEarned||0}/{sub.maxXp||a.xp} XP</span>
+              <span className="mono" style={{fontSize:11,color:"#f0a0c0"}}>{sub.xpEarned||0} XP ({xpToScore(sub.xpEarned||0)} คะแนน)</span>
               <button className="btn-ghost" onClick={()=>setEditSubModal({
                 assignmentId:a.id,
                 xpEarned:sub.xpEarned||0,
@@ -1908,11 +1847,14 @@ function TeacherStudents({students,assignments,setStudents}){
         );})}</div>
       {/* คะแนนรายส่วน */}
       {(()=>{
-        const HALF_XP=1250;
-        const xpFirst=Math.min(s.xp,HALF_XP);
-        const xpSecond=Math.max(0,s.xp-HALF_XP);
-        const sc1=Math.min(35,Math.round(xpFirst/25));
-        const sc2=Math.min(35,Math.round(xpSecond/25));
+        const xpFromAssign=(phase)=>(assignments||[]).reduce((sum,a)=>{
+          if((a.phase||"before")!==phase)return sum;
+          const sub=s.submissions?.[a.id];
+          return sum+(sub?.graded?sub.xpEarned||0:0);
+        },0);
+        const xpFromLog=(phase)=>(s.xpLog||[]).reduce((sum,l)=>(l.phase||"before")===phase?sum+(l.xp||0):sum,0);
+        const sc1=Math.min(35,Math.round((xpFromAssign("before")+xpFromLog("before"))/25));
+        const sc2=Math.min(35,Math.round((xpFromAssign("after")+xpFromLog("after"))/25));
         const sections=[
           {label:"เก็บก่อนกลางภาค",color:"#185FA5",score:sc1,max:35},
           {label:"สอบกลางภาค",color:"#5DCAA5",score:s.midterm??null,max:15,editable:true},
@@ -2047,7 +1989,7 @@ function TeacherStudents({students,assignments,setStudents}){
 // ─────────────────────────────────────────────
 function TeacherAssignments({assignments,setAssignments,students,setStudents}){
   const [modal,setModal]=useState(false);
-  const [form,setForm]=useState({chapterId:"CH1",title:"",xp:200,due:"",desc:"",type:"worksheet"});
+  const [form,setForm]=useState({chapterId:"CH1",title:"",xp:200,due:"",desc:"",type:"worksheet",phase:"before"});
   const [checkModal,setCheckModal]=useState(null);
   const [editXp,setEditXp]=useState({});
   const [editMaxXp,setEditMaxXp]=useState("");
@@ -2058,9 +2000,11 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
     if(!form.title.trim())return;
     const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
     setAssignments(prev=>[...prev,{...form,id:"A"+Date.now(),xp:Number(form.xp),createdAt:today}]);
-    setModal(false);setForm({chapterId:"CH1",title:"",xp:200,due:"",desc:"",type:"worksheet"});
+    setModal(false);setForm({chapterId:"CH1",title:"",xp:200,due:"",desc:"",type:"worksheet",phase:"before"});
   }
   function del(id){if(window.confirm("ลบงานนี้?"))setAssignments(prev=>prev.filter(a=>a.id!==id));}
+  // เปลี่ยนแท็กก่อน/หลังกลางภาคของใบงานที่มีอยู่แล้ว — ไม่กระทบคะแนน/การส่งงานเดิม
+  function setPhase(id,phase){setAssignments(prev=>prev.map(a=>a.id===id?{...a,phase}:a));}
 
   function openCheck(a){
     setCheckModal(a);
@@ -2140,6 +2084,19 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
                 <select className="input" value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))}>
                   {Object.entries(TYPE_META).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}
                 </select>
+              </div>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>ช่วงเวลา</label>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                {[["before","🟣 ก่อนกลางภาค"],["after","🔵 หลังกลางภาค"]].map(([v,l])=>(
+                  <button key={v} type="button" onClick={()=>setForm(p=>({...p,phase:v}))} className="btn"
+                    style={{background:form.phase===v?"rgba(232,188,85,.18)":"rgba(255,255,255,.05)",
+                      border:`1px solid ${form.phase===v?"rgba(232,188,85,.6)":"var(--border)"}`,
+                      color:form.phase===v?"var(--gold)":"var(--muted2)",
+                      borderRadius:6,padding:"10px 6px",fontSize:12,
+                      fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:.5}}>{l}</button>
+                ))}
               </div>
             </div>
             <div style={{display:"flex",gap:10}}>
@@ -2250,14 +2207,21 @@ function TeacherAssignments({assignments,setAssignments,students,setStudents}){
                 <div key={a.id} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:`${ch.color}25`}}>
                   <div style={{fontSize:24,flexShrink:0}}>{tm.icon||"📄"}</div>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{a.title}</div>
+                    <div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{a.title} <span style={{fontSize:11,color:"var(--muted)",fontWeight:400}}>(เต็ม {a.xp} XP / {xpToScore(a.xp)} คะแนน)</span></div>
                     <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{a.desc} · {a.due}</div>
-                    <div style={{display:"flex",gap:6,marginTop:6}}>
+                    <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
                       <span className="badge" style={{background:"rgba(94,200,126,.12)",border:"1px solid rgba(94,200,126,.35)",color:"var(--green)"}}>✓ {filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length}/{filteredStudentsA.length} คน</span>
                       {filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length<filteredStudentsA.length&&<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.25)",color:"var(--red)"}}>⏳ ค้าง {filteredStudentsA.length-filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length}</span>}
+                      <button onClick={()=>setPhase(a.id,(a.phase||"before")==="before"?"after":"before")}
+                        className="badge" style={{cursor:"pointer",border:"none",
+                          background:(a.phase||"before")==="before"?"rgba(167,139,250,.15)":"rgba(244,114,182,.15)",
+                          color:(a.phase||"before")==="before"?"#a78bfa":"#f472b6"}}
+                        title="คลิกเพื่อสลับ">
+                        {(a.phase||"before")==="before"?"🟣 ก่อนกลางภาค":"🔵 หลังกลางภาค"}
+                      </button>
                     </div>
                   </div>
-                  <div className="mono" style={{color:"#f0a0c0",fontSize:13,flexShrink:0}}>+{a.xp} XP</div>
+                  <div className="mono" style={{color:"#f0a0c0",fontSize:13,flexShrink:0,textAlign:"center"}}>{a.xp} XP<div style={{fontSize:10,color:"var(--muted)"}}>{xpToScore(a.xp)} คะแนน</div></div>
                   <button className="btn btn-cyan" onClick={()=>openCheck(a)} style={{padding:"8px 16px",fontSize:13,flexShrink:0}}>👁 ตรวจ</button>
                   <button className="btn btn-red" onClick={()=>del(a.id)} style={{padding:"7px 12px",fontSize:13,flexShrink:0}}>🗑</button>
                 </div>
@@ -2363,6 +2327,7 @@ function TeacherScores({students,setStudents}){
   const [xpAmt,setXpAmt]=useState("");
   const [activityName,setActivityName]=useState("");
   const [selChapter,setSelChapter]=useState("CH1");
+  const [selPhase,setSelPhase]=useState("before");
   const [msg,setMsg]=useState(null);
   const [editAct,setEditAct]=useState<any>(null); // {oldName, newName, newChapterId}
 
@@ -2393,7 +2358,7 @@ function TeacherScores({students,setStudents}){
     if(targetMode==="single"&&!selStu){toast("กรุณาเลือกนักเรียน",true);return;}
     if(targetMode==="multi"&&selMulti.length===0){toast("กรุณาเลือกนักเรียนอย่างน้อย 1 คน",true);return;}
     const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
-    const logEntry={activity:activityName.trim(),xp:Number(xpAmt),date:today,chapterId:selChapter};
+    const logEntry={activity:activityName.trim(),xp:Number(xpAmt),date:today,chapterId:selChapter,phase:selPhase};
     if(targetMode==="all"){
       const targets=filteredStudents.map((s:any)=>s.id);
       setStudents(prev=>prev.map(s=>targets.includes(s.id)?{...s,xp:s.xp+Number(xpAmt),xpLog:[...(s.xpLog||[]),logEntry]}:s));
@@ -2407,7 +2372,7 @@ function TeacherScores({students,setStudents}){
       setStudents(prev=>prev.map(s=>s.id===selStu?{...s,xp:s.xp+Number(xpAmt),xpLog:[...(s.xpLog||[]),logEntry]}:s));
       toast(`✅ เพิ่ม ${xpAmt} XP จาก "${activityName}" ให้ ${name}!`);
     }
-    setXpAmt("");setActivityName("");setSelStu("");setSelChapter("CH1");
+    setXpAmt("");setActivityName("");setSelStu("");setSelChapter("CH1");setSelPhase("before");
   }
 
   const allActivities=useMemo(()=>{
@@ -2469,11 +2434,26 @@ function TeacherScores({students,setStudents}){
                   placeholder="เช่น ตอบคำถาม, แบบทดสอบ"/>
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
               <div>
                 <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>จำนวน XP</label>
                 <input className="input" type="number" value={xpAmt} onChange={e=>setXpAmt(e.target.value)} placeholder="เช่น 200"/>
               </div>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ช่วงเวลา</label>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  {[["before","🟣 ก่อนกลางภาค"],["after","🔵 หลังกลางภาค"]].map(([v,l])=>(
+                    <button key={v} onClick={()=>setSelPhase(v)} className="btn"
+                      style={{background:selPhase===v?"rgba(232,188,85,.18)":"rgba(255,255,255,.05)",
+                        border:`1px solid ${selPhase===v?"rgba(232,188,85,.6)":"var(--border)"}`,
+                        color:selPhase===v?"var(--gold)":"var(--muted2)",
+                        borderRadius:6,padding:"10px 6px",fontSize:11,
+                        fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:.5}}>{l}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{marginBottom:16}}>
               <div>
                 <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ให้คะแนน</label>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
@@ -2654,8 +2634,7 @@ function TeacherScores({students,setStudents}){
 // ─────────────────────────────────────────────
 // TEACHER: GRADES SUMMARY + PRE/POST TEST
 // ─────────────────────────────────────────────
-function TeacherGrades({students,setStudents}){
-  const HALF_XP=1250;
+function TeacherGrades({students,setStudents,assignments}){
   const [tabG,setTabG]=useState("score");
   const [maxPP,setMaxPP]=useState(20);
   const [ppScores,setPpScores]=useState<any>(()=>{
@@ -2670,8 +2649,17 @@ function TeacherGrades({students,setStudents}){
   });
 
   function xpToScore(xp:number,max:number){return Math.min(max,Math.round(xp/25));}
-  function getS1(s:any){return xpToScore(Math.min(s.xp,HALF_XP),35);}
-  function getS2(s:any){return xpToScore(Math.max(0,s.xp-HALF_XP),35);}
+  function xpByPhase(s:any,phase:string){
+    const fromAssign=(assignments||[]).reduce((sum:number,a:any)=>{
+      if((a.phase||"before")!==phase)return sum;
+      const sub=s.submissions?.[a.id];
+      return sum+(sub?.graded?sub.xpEarned||0:0);
+    },0);
+    const fromLog=(s.xpLog||[]).reduce((sum:number,l:any)=>(l.phase||"before")===phase?sum+(l.xp||0):sum,0);
+    return fromAssign+fromLog;
+  }
+  function getS1(s:any){return xpToScore(xpByPhase(s,"before"),35);}
+  function getS2(s:any){return xpToScore(xpByPhase(s,"after"),35);}
   function getTotal(s:any){
     if(s.midterm===null||s.midterm===undefined||s.final===null||s.final===undefined)return null;
     return getS1(s)+(s.midterm||0)+getS2(s)+(s.final||0);
@@ -3473,7 +3461,7 @@ export default function App(){
           {role==="teacher"&&page==="t-resources"  &&<TeacherResources resources={resources} setResources={setResources}/>}
           {role==="teacher"&&page==="t-scores"     &&<TeacherScores students={students} setStudents={setStudents}/>}
           {role==="teacher"&&page==="t-exam"       &&<TeacherExamScores students={students} setStudents={setStudents}/>}
-          {role==="teacher"&&page==="t-grades"     &&<TeacherGrades students={students} setStudents={setStudents}/>}
+          {role==="teacher"&&page==="t-grades"     &&<TeacherGrades students={students} setStudents={setStudents} assignments={assignments}/>}
           {role==="teacher"&&page==="t-airdrop"    &&<TeacherAirdrop students={students} setPendingAirdrop={setPendingAirdrop} setStudents={setStudents}/>}
           {role==="teacher"&&page==="ranking"      &&<RankingPage students={students} myId={undefined} isTeacher={true}/>}
         </main>
