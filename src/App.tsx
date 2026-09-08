@@ -1555,7 +1555,7 @@ function TeacherExamScores({students,setStudents}){
           {students.map(s=>(
             <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid var(--border)"}}>
               <span style={{fontSize:20,flexShrink:0}}>{s.avatar}</span>
-              <span style={{flex:1,fontSize:13,color:"var(--text)"}}>{s.name}</span>
+              <span style={{flex:1,fontSize:13,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>{s.name}</span>
               <input type="number" min="0" max="15" value={midScores[s.id]||""} placeholder="—"
                 onChange={e=>setMidScores(p=>({...p,[s.id]:e.target.value}))}
                 style={{width:60,background:"rgba(14,26,43,.8)",border:"1px solid var(--border2)",color:"#93c5fd",borderRadius:5,padding:"6px 8px",fontFamily:"'Share Tech Mono',monospace",fontSize:15,textAlign:"center",outline:"none"}}/>
@@ -1569,7 +1569,7 @@ function TeacherExamScores({students,setStudents}){
           {students.map(s=>(
             <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid var(--border)"}}>
               <span style={{fontSize:20,flexShrink:0}}>{s.avatar}</span>
-              <span style={{flex:1,fontSize:13,color:"var(--text)"}}>{s.name}</span>
+              <span style={{flex:1,fontSize:13,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>{s.name}</span>
               <input type="number" min="0" max="15" value={finalScores[s.id]||""} placeholder="—"
                 onChange={e=>setFinalScores(p=>({...p,[s.id]:e.target.value}))}
                 style={{width:60,background:"rgba(14,26,43,.8)",border:"1px solid var(--border2)",color:"#fde68a",borderRadius:5,padding:"6px 8px",fontFamily:"'Share Tech Mono',monospace",fontSize:15,textAlign:"center",outline:"none"}}/>
