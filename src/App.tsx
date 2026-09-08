@@ -1,53 +1,3914 @@
 declare const Chart: any;
 import { useState, useEffect, useRef, useMemo } from "react";
 
-// (ที่นี่คือส่วน CSS, Constants, Mock Data, และฟังก์ชันย่อยที่คุณมีอยู่แล้วเหมือนเดิมทุกอย่าง)
-// [คำเตือน: โปรดรักษา CSS, Constants และฟังก์ชันย่อยที่คุณมีไว้ให้ครบ]
+// ─────────────────────────────────────────────
+// GLOBAL CSS — โทนสว่างขึ้น 20%
+// ─────────────────────────────────────────────
+const G = `
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Share+Tech+Mono&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1e35;--bg2:#162840;--bg3:#1e3454;--bg4:#2a4268;
+  --border:rgba(212,168,67,.42);--border2:rgba(212,168,67,.65);
+  --gold:#e8bc55;--gold2:#f5cc70;--gold3:#ffe899;
+  --red:#e86060;--cyan:#4ecaae;--orange:#e88c4a;--purple:#aa8ff0;
+  --blue:#5aaee8;--green:#5ec87e;
+  --text:#f5eedd;--muted:#9aacbf;--muted2:#c8d8e8;
+}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans Thai',sans-serif;min-height:100vh;overflow-x:hidden}
+.mono{font-family:'Share Tech Mono',monospace}
+.cond{font-family:'Barlow Condensed',sans-serif}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes glow{0%,100%{box-shadow:0 0 8px var(--gold)}50%{box-shadow:0 0 24px var(--gold)}}
+@keyframes glowPulse{0%,100%{opacity:1;transform:translateY(-50%) scale(1)}50%{opacity:.75;transform:translateY(-50%) scale(1.2)}}
+@keyframes airIn{0%{transform:translateY(-50px) scale(.6);opacity:0}65%{transform:translateY(6px) scale(1.06)}100%{transform:translateY(0) scale(1);opacity:1}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes flagWave{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+@keyframes waterShimmer{0%,100%{opacity:.5;transform:scaleX(1)}50%{opacity:.8;transform:scaleX(1.015)}}
+@keyframes gondola{0%,100%{transform:translateX(0) rotate(-1deg)}50%{transform:translateX(8px) rotate(1deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes slideR{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+@keyframes sunRay{0%,100%{opacity:.3}50%{opacity:.6}}
+.fade-up{animation:fadeUp .4s ease forwards}
+.air-in{animation:airIn .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.slide-r{animation:slideR .3s ease forwards}
+.btn{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;border:none;cursor:pointer;transition:all .2s;user-select:none}
+.btn:active{transform:scale(.96)}
+.btn-gold{background:linear-gradient(135deg,#c8902a,#f5cc70,#c8902a);background-size:200%;color:#0e1220;padding:11px 26px;border-radius:5px;text-transform:uppercase;font-size:15px}
+.btn-gold:hover{background-position:right;box-shadow:0 0 20px rgba(232,188,85,.5)}
+.btn-cyan{background:linear-gradient(135deg,#1e5248,#4ecaae);color:#fff;padding:10px 22px;border-radius:5px;text-transform:uppercase;font-size:14px}
+.btn-cyan:hover{box-shadow:0 0 16px rgba(78,202,174,.45)}
+.btn-red{background:linear-gradient(135deg,#7a2020,#e86060);color:#fff;padding:9px 20px;border-radius:5px;text-transform:uppercase;font-size:13px}
+.btn-purple{background:linear-gradient(135deg,#3a2060,#aa8ff0);color:#fff;padding:10px 22px;border-radius:5px;text-transform:uppercase;font-size:14px}
+.btn-purple:hover{box-shadow:0 0 16px rgba(170,143,240,.45)}
+.btn-pink{background:linear-gradient(135deg,#901850,#d04080,#e87060);color:#fff;padding:11px 26px;border-radius:5px;text-transform:uppercase;font-size:15px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1.5px;border:none;cursor:pointer;width:100%}
+.btn-pink:hover{box-shadow:0 0 20px rgba(200,60,100,.5)}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:8px 18px;border-radius:5px;text-transform:uppercase;font-size:12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+.btn-ghost{background:rgba(255,255,255,.09);border:1px solid var(--border);color:var(--muted2);padding:7px 16px;border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all .2s}
+.btn-ghost:hover{background:rgba(255,255,255,.14);color:var(--text)}
+.card{background:linear-gradient(135deg,rgba(22,38,65,.97),rgba(30,48,78,.97));border:1px solid rgba(212,168,67,.42);border-radius:10px;padding:20px;backdrop-filter:blur(8px)}
+.card-gold{border-color:rgba(232,188,85,.7);box-shadow:0 0 28px rgba(232,188,85,.22)}
+.card-cyan{border-color:rgba(78,202,174,.35);box-shadow:0 0 18px rgba(78,202,174,.1)}
+.card-hover{transition:all .2s;cursor:pointer}
+.card-hover:hover{border-color:rgba(232,188,85,.6);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.32)}
+.badge{font-family:'Share Tech Mono',monospace;font-size:10px;padding:3px 9px;border-radius:3px;letter-spacing:1px;text-transform:uppercase;display:inline-block}
+.input{background:rgba(10,20,38,.8);border:1px solid rgba(232,188,85,.4);color:var(--text);border-radius:6px;padding:10px 14px;font-family:'Noto Sans Thai',sans-serif;font-size:14px;width:100%;outline:none;transition:border-color .2s}
+.input:focus{border-color:var(--gold)}
+.input::placeholder{color:var(--muted)}
+select.input option{background:#1e3454}
+.overlay{position:fixed;inset:0;background:rgba(8,18,35,.85);backdrop-filter:blur(8px);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
+.divider{height:1px;background:var(--border);margin:14px 0}
+`;
 
 // ─────────────────────────────────────────────
-// ใส่โค้ดส่วน CSS, CHAPTERS, XP_RANKS, ฯลฯ ของคุณไว้ที่นี่
-// ... (ก๊อปปี้ส่วนต้นไฟล์ของคุณมาวางตรงนี้) ...
+// CONSTANTS
 // ─────────────────────────────────────────────
+const CHAPTERS = [
+  {id:"CH1",label:"หน่วยที่ 1",title:"วิทยาศาสตร์กับการแก้ปัญหา",icon:"🔬",color:"#7de8d0",bg:"rgba(125,232,208,.06)"},
+  {id:"CH2",label:"หน่วยที่ 2",title:"พันธุศาสตร์",icon:"🧬",color:"#c060e0",bg:"rgba(192,96,224,.06)"},
+  {id:"CH3",label:"หน่วยที่ 3",title:"คลื่นและแสง",icon:"🌊",color:"#f0a0c0",bg:"rgba(240,160,192,.06)"},
+  {id:"CH4",label:"หน่วยที่ 4",title:"ระบบสุริยะของเรา",icon:"🌌",color:"#f5cc70",bg:"rgba(245,204,112,.06)"},
+];
+
+const XP_RANKS = [
+  {minXP:2000,maxXP:2500,label:"DIAMOND",  grade:"4",  color:"#a8d8ff",icon:"💎",desc:"ดีเยี่ยม",  scoreRange:"80–100"},
+  {minXP:1875,maxXP:1999,label:"PLATINUM", grade:"3.5",color:"#e0ccff",icon:"🔮",desc:"ดีมาก",     scoreRange:"75–79"},
+  {minXP:1750,maxXP:1874,label:"GOLD",     grade:"3",  color:"#f5cc70",icon:"🥇",desc:"ดี",         scoreRange:"70–74"},
+  {minXP:1625,maxXP:1749,label:"SILVER I", grade:"2.5",color:"#c8ddf0",icon:"🥈",desc:"ค่อนข้างดี",scoreRange:"65–69"},
+  {minXP:1500,maxXP:1624,label:"SILVER II",grade:"2",  color:"#b0cce0",icon:"🥈",desc:"พอใช้",     scoreRange:"60–64"},
+  {minXP:1375,maxXP:1499,label:"BRONZE I", grade:"1.5",color:"#ffb86a",icon:"🥉",desc:"อ่อน",      scoreRange:"55–59"},
+  {minXP:1250,maxXP:1374,label:"BRONZE II",grade:"1",  color:"#ff9840",icon:"🥉",desc:"อ่อนมาก",   scoreRange:"50–54"},
+  {minXP:0,   maxXP:1249,label:"IRON",     grade:"0",  color:"#9aacbf",icon:"⚙️",desc:"ไม่ผ่าน",   scoreRange:"0–49"},
+];
+const ROOMS = [
+  {id:"r1",label:"ม.3/1",color:"#f0a0c0"},
+  {id:"r2",label:"ม.3/2",color:"#7de8d0"},
+];
+let MAX_XP = 2500;
+
+const AIRDROP_POOL = [
+  {id:"r1",name:"AWM Sniper Rifle",   icon:"🔫",rarity:"LEGENDARY",color:"#f5cc70"},
+  {id:"r2",name:"Level 3 Helmet",     icon:"⛑️", rarity:"EPIC",     color:"#a569bd"},
+  {id:"r3",name:"Ghillie Suit",       icon:"🥷", rarity:"EPIC",     color:"#a569bd"},
+  {id:"r4",name:"Adrenaline Syringe", icon:"💉", rarity:"RARE",     color:"#4ecaae"},
+  {id:"r5",name:"First Aid Kit",      icon:"🩺", rarity:"RARE",     color:"#4ecaae"},
+  {id:"r6",name:"Scope 4x",           icon:"🔭", rarity:"UNCOMMON", color:"#7de8a0"},
+  {id:"r7",name:"Energy Drink",       icon:"🥤", rarity:"COMMON",   color:"#7b8fe0"},
+  {id:"r8",name:"Bandage Pack",       icon:"🩹", rarity:"COMMON",   color:"#7b8fe0"},
+];
+
+const TYPE_META={
+  worksheet:{label:"ใบกิจกรรม",color:"#4ecaae",icon:"📝"},
+  quiz:     {label:"แบบทดสอบ", color:"#f5cc70",icon:"🎯"},
+  lab:      {label:"แลป",      color:"#e88c4a",icon:"🧪"},
+};
+
+function getRank(xp){return XP_RANKS.find(r=>xp>=r.minXP)||XP_RANKS[XP_RANKS.length-1]}
 
 // ─────────────────────────────────────────────
-// ฟังก์ชัน GAS API (เพิ่ม gasRemoveAssignment เข้าไป)
+// MOCK DATA
 // ─────────────────────────────────────────────
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwoaVGfEoN7CTS4hcIhdZ09JW7DH3e87gT9De-xkhOZOv-4lLKebsxVgm7iasVElKCr/exec";
+const INIT_ASSIGNMENTS = [
+  {id:"A1",chapterId:"CH1",title:"ใบกิจกรรม 1.1: กระบวนการทางวิทยาศาสตร์",xp:200,due:"30 พ.ค. 2568",desc:"ฝึกทักษะการสังเกตและตั้งสมมติฐาน",type:"worksheet",phase:"before",createdAt:"20 พ.ค. 2568"},
+  {id:"A2",chapterId:"CH2",title:"ใบกิจกรรม 2.1: การถ่ายทอดลักษณะทางพันธุกรรม",xp:250,due:"15 มิ.ย. 2568",desc:"Mendel Laws of Inheritance",type:"worksheet",phase:"before",createdAt:"10 มิ.ย. 2568"},
+  {id:"A3",chapterId:"CH3",title:"Lab 3.1: สมบัติของคลื่น",xp:200,due:"30 มิ.ย. 2568",desc:"การสะท้อน หักเห และเลี้ยวเบน",type:"lab",phase:"before",createdAt:"25 มิ.ย. 2568"},
+  {id:"A4",chapterId:"CH4",title:"ใบกิจกรรม 4.1: ระบบสุริยะ",xp:200,due:"20 ก.ค. 2568",desc:"ดาวเคราะห์และวงโคจร",type:"worksheet",phase:"before",createdAt:"15 ก.ค. 2568"},
+];
+const INIT_RESOURCES = [];
+const INIT_STUDENTS = [
+  {id:"r1s1",  room:"r1",name:"เด็กชาย เจษฎา หมดทุกข์",           password:"18964",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s2",  room:"r1",name:"เด็กชาย เจษฎา เทียนมิ่งมาตย์",        password:"18965",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s3",  room:"r1",name:"เด็กชาย ณัฐพนธ์ สามรอดภัย",           password:"18967",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s4",  room:"r1",name:"เด็กชาย ทศพร รอดชีวี",                password:"18969",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s5",  room:"r1",name:"เด็กชาย ธนวุท ยิ้มโสตร์",             password:"18972",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s6",  room:"r1",name:"เด็กชาย ธัญวุธ แสงจันทร์",            password:"18973",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s7",  room:"r1",name:"เด็กชาย นิติภูมิ แคงสันเทียะ",        password:"18976",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s8",  room:"r1",name:"เด็กชาย พงษ์เทพ ชํานาญกิจ",           password:"18978",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s9",  room:"r1",name:"เด็กชาย วายุ พิมพ์ประสิทธิ์",         password:"18980",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s10", room:"r1",name:"เด็กชาย ศรัณย์ แก้วเขียว",            password:"18981",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s11", room:"r1",name:"เด็กชาย สุรธัส สีจัน",                password:"18983",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s12", room:"r1",name:"เด็กชาย กฤตเมธ โคตรพรม",              password:"19001",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s13", room:"r1",name:"เด็กชาย เกียรติตระกูล พิมพาจันทร์",   password:"19157",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s14", room:"r1",name:"เด็กชาย ธนภูมิ บุญนอก",              password:"19158",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s15", room:"r1",name:"เด็กชาย พสิษธนโชติ ฤกษ์ภิกขุณี",     password:"19159",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s16", room:"r1",name:"เด็กชาย กิตติพิเชษฐ์ วะศรี",         password:"19160",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s17", room:"r1",name:"เด็กชาย วันใหม่ สว่างวงค์",           password:"19174",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s18", room:"r1",name:"เด็กชาย ณัฏฐกิตติ์ กระสังข์",        password:"19217",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s19", room:"r1",name:"เด็กหญิง ชลิตา สิงควัฒน์",           password:"18986",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s20", room:"r1",name:"เด็กหญิง ณัชชยา ไชยหงษา",            password:"18988",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s21", room:"r1",name:"เด็กหญิง ณัชชา พนาพุฒิ",             password:"18989",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s22", room:"r1",name:"เด็กหญิง ณัฏฐณิชา เศรษฐไพศาลกุล",   password:"18990",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s23", room:"r1",name:"เด็กหญิง ดรุณี บุญคํา",              password:"18991",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s24", room:"r1",name:"เด็กหญิง พรพิพรรธน์ เกียรตินิรชา",   password:"18993",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s25", room:"r1",name:"เด็กหญิง พีรดา ศิลคุ้ม",             password:"18994",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s26", room:"r1",name:"เด็กหญิง วิภาดา แก้วอินัง",          password:"18996",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s27", room:"r1",name:"เด็กหญิง ศุพรรณี โพธิ์ล่าม",         password:"18997",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s28", room:"r1",name:"เด็กหญิง สรัญญา รุ่งเรือง",          password:"18998",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s29", room:"r1",name:"เด็กหญิง นันทิชา ชัยภูมิ",           password:"19027",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s30", room:"r1",name:"เด็กหญิง เปรมวิกา ฝัดค้า",           password:"19031",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s31", room:"r1",name:"เด็กหญิง กชกร มูลวงค์",              password:"19062",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r1s32", room:"r1",name:"เด็กหญิง เพชรลดา อยู่ยง",            password:"19204",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s1",  room:"r2",name:"เด็กชาย ชินกฤต สิงห์โสม",            password:"18966",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s2",  room:"r2",name:"เด็กชาย ธนกร งาทอง",                 password:"18970",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s3",  room:"r2",name:"เด็กชาย ธนรัตน์ มั่นที่สุด",         password:"18971",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s4",  room:"r2",name:"เด็กชาย ธีรศักดิ์ วุสันเทียะ",       password:"18974",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s5",  room:"r2",name:"เด็กชาย จิรานุพัฒน์ อุยวรรณัง",      password:"19002",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s6",  room:"r2",name:"เด็กชาย ตรีภพ โสดแก้ว",              password:"19005",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s7",  room:"r2",name:"เด็กชาย พงค์ศิริ ดามิลี",            password:"19011",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s8",  room:"r2",name:"เด็กชาย พันศักดิ์ พุทธศรี",          password:"19015",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s9",  room:"r2",name:"เด็กชาย ศุภรุจ พึ่งกริม",            password:"19018",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s10", room:"r2",name:"เด็กชาย กรวิชญ์ ทำดี",               password:"19162",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s11", room:"r2",name:"เด็กชาย ไกรวิชญ์ บุญเปี่ยม",         password:"19163",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s12", room:"r2",name:"เด็กชาย ชิษณุพงศ์ แก่งนอก",         password:"19164",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s13", room:"r2",name:"เด็กชาย ณัฐกิตต์ ยิ้มถาวร",         password:"19165",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s14", room:"r2",name:"เด็กชาย ศรายุทธ โตเจริญ",            password:"19168",avatar:"🧒",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s15", room:"r2",name:"เด็กหญิง โซนี คอง",                  password:"18987",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s16", room:"r2",name:"เด็กหญิง สุชานันท์ สีฉิม",           password:"18999",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s17", room:"r2",name:"เด็กหญิง ทิพย์ธิดา สนธิ",            password:"18992",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s18", room:"r2",name:"เด็กหญิง กัลธิมา โยธาหาร",           password:"19022",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s19", room:"r2",name:"เด็กหญิง ชนากานต์ แย้มโชติ",         password:"19024",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s20", room:"r2",name:"เด็กหญิง ณัฐธิดาภรณ์ พวงบุบผา",      password:"19025",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s21", room:"r2",name:"เด็กหญิง นพมาศ อยู่ยงสินธุ์",        password:"19026",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s22", room:"r2",name:"เด็กหญิง ฝน อินทะวงสา",              password:"19032",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s23", room:"r2",name:"เด็กหญิง พันธ์ชิตา ดวงดาว",          password:"19169",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s24", room:"r2",name:"เด็กหญิง เนตรนภา สร้อยจิตร",         password:"19170",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s25", room:"r2",name:"เด็กหญิง ณิราวรรณ จันทร์ซึ้ง",       password:"19171",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+  {id:"r2s26", room:"r2",name:"เด็กหญิง วานิดา คำสุนทร",            password:"19172",avatar:"👧",xp:0,submissions:{},inventory:[],midterm:null,final:null,xpLog:[]},
+];
 
-async function gasRemoveAssignment(assignmentId) {
-  try {
-    await fetch(GAS_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ action: "removeAssignment", assignmentId })
+// ─────────────────────────────────────────────
+// AUDIO
+// ─────────────────────────────────────────────
+function playAirdropSound(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [523,659,784,1047].forEach((f,i)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);o.frequency.value=f;o.type="sine";
+      const t=ctx.currentTime+i*.12;
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3,t+.04);g.gain.exponentialRampToValueAtTime(.001,t+.35);
+      o.start(t);o.stop(t+.35);
     });
-  } catch (e) { console.error("gasRemoveAssignment error:", e); }
+  }catch(e){}
 }
 
-async function gasSubmitAssignment(payload){ /* ...ของเดิม... */ }
-async function gasRemoveSubmission(payload){ /* ...ของเดิม... */ }
-async function gasGradeSubmission(payload){ /* ...ของเดิม... */ }
-async function gasSave(action,data){ /* ...ของเดิม... */ }
-async function gasGet(){ /* ...ของเดิม... */ }
+// ─────────────────────────────────────────────
+// VENICE BACKGROUND — สว่างขึ้น
+// ─────────────────────────────────────────────
+// ── กลางวัน: Login หน้าเดียว ──
+function SakuraDayBackground(){
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
+      {/* ภาพพื้นหลังจริง */}
+      <div style={{position:"absolute",inset:0,
+        backgroundImage:`url("${img2}")`,
+        backgroundSize:"cover",backgroundPosition:"center",backgroundRepeat:"no-repeat"}}/>
+      {/* overlay เบาๆ ให้อ่านง่าย */}
+      <div style={{position:"absolute",inset:0,background:"rgba(255,240,250,.18)"}}/>
+      {/* กลีบซากุระร่วง */}
+      {Array.from({length:20},(_,i)=>(
+        <div key={i} style={{position:"absolute",borderRadius:"50% 0",
+          width:5+i*.3,height:5+i*.3,
+          background:`rgba(255,${140+i*4},188,.82)`,
+          left:`${i*5}%`,top:"-10px",
+          animation:`fall ${3+i*.3}s linear infinite`,
+          animationDelay:`${i*.45}s`}}/>
+      ))}
+    </div>
+  );
+}
+function SakuraDayBackground_UNUSED(){
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
+      {/* ฟ้าสีฟ้าใส กลางวัน */}
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,#87ceeb 0%,#b8e4f7 35%,#d4f0fa 55%,#e8f8e8 72%,#c8e8c0 85%,#a8d898 100%)"}}/>
+      {/* เมฆ */}
+      {[[8,6,180,60],[22,12,220,55],[55,8,160,50],[68,14,200,52],[82,7,170,48]].map(([l,t,w,h],i)=>(
+        <div key={i} style={{position:"absolute",left:`${l}%`,top:`${t}%`,width:w,height:h,
+          borderRadius:"50%",background:"rgba(255,255,255,.85)",filter:"blur(8px)"}}/>
+      ))}
+      {/* เมฆก้อนเล็ก */}
+      {[[15,10,90,35],[38,6,120,40],[72,11,100,38]].map(([l,t,w,h],i)=>(
+        <div key={i} style={{position:"absolute",left:`${l}%`,top:`${t}%`,width:w,height:h,
+          borderRadius:"50%",background:"rgba(255,255,255,.7)",filter:"blur(5px)"}}/>
+      ))}
+      {/* ภูเขาเขียว */}
+      <svg style={{position:"absolute",bottom:"30%",left:0,width:"100%"}} height="220" viewBox="0 0 1400 220" preserveAspectRatio="none">
+        <path d="M0,220 L0,150 L120,80 L240,130 L360,60 L480,120 L600,45 L720,110 L840,55 L960,125 L1080,70 L1200,130 L1320,75 L1400,115 L1400,220 Z" fill="#4a8a3a" opacity=".9"/>
+        <path d="M0,220 L0,170 L100,120 L200,155 L320,100 L440,145 L560,95 L680,140 L800,105 L920,150 L1040,115 L1160,155 L1280,120 L1400,148 L1400,220 Z" fill="#5ca048" opacity=".95"/>
+        {/* หิมะบนยอดเขา */}
+        <path d="M600,45 L622,78 L578,78 Z" fill="rgba(255,255,255,.8)"/>
+        <path d="M360,60 L380,90 L340,90 Z" fill="rgba(255,255,255,.7)"/>
+        <path d="M840,55 L860,85 L820,85 Z" fill="rgba(255,255,255,.75)"/>
+      </svg>
+      {/* พื้นหญ้า */}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:"32%",
+        background:"linear-gradient(180deg,#6ab84a 0%,#58a03c 40%,#4a8832 100%)"}}/>
+      {/* แม่น้ำกลางวัน */}
+      <div style={{position:"absolute",bottom:"14%",left:0,right:0,height:"7%",
+        background:"linear-gradient(180deg,rgba(100,190,255,.7),rgba(70,160,240,.85))",
+        borderTop:"1px solid rgba(150,220,255,.5)"}}>
+        <div style={{position:"absolute",top:"30%",left:0,right:0,height:2,
+          background:"linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent)",
+          animation:"shimmer 2.5s ease-in-out infinite"}}/>
+      </div>
+      {/* ต้นซากุระ ซ้าย - กลางวันใบชมพูสดใส */}
+      {[{l:"0%",h:200,w:130},{l:"8%",h:260,w:170},{l:"19%",h:215,w:145}].map((t,i)=>(
+        <div key={i} style={{position:"absolute",bottom:"29%",left:t.l,width:t.w,height:t.h}}>
+          <div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",
+            width:t.w*.07,height:t.h*.4,background:"#5a3010",borderRadius:4}}/>
+          {Array.from({length:10},(_,j)=>(
+            <div key={j} style={{position:"absolute",borderRadius:"50%",
+              width:t.w*(.28+Math.random()*.3),height:t.w*(.28+Math.random()*.3),
+              left:`${Math.random()*58+12}%`,top:`${Math.random()*42}%`,
+              background:j%3===0?"rgba(255,170,200,.85)":j%3===1?"rgba(240,130,170,.8)":"rgba(255,200,220,.75)"}}/>
+          ))}
+        </div>
+      ))}
+      {/* ต้นซากุระ ขวา */}
+      {[{r:"0%",h:205,w:135},{r:"9%",h:265,w:175},{r:"20%",h:210,w:140}].map((t,i)=>(
+        <div key={i} style={{position:"absolute",bottom:"29%",right:t.r,width:t.w,height:t.h}}>
+          <div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",
+            width:t.w*.07,height:t.h*.4,background:"#5a3010",borderRadius:4}}/>
+          {Array.from({length:10},(_,j)=>(
+            <div key={j} style={{position:"absolute",borderRadius:"50%",
+              width:t.w*(.28+Math.random()*.3),height:t.w*(.28+Math.random()*.3),
+              left:`${Math.random()*58+12}%`,top:`${Math.random()*42}%`,
+              background:j%3===0?"rgba(255,160,195,.85)":j%3===1?"rgba(245,120,165,.8)":"rgba(255,195,215,.75)"}}/>
+          ))}
+        </div>
+      ))}
+      {/* กลีบซากุระร่วง */}
+      {Array.from({length:25},(_,i)=>(
+        <div key={i} style={{position:"absolute",borderRadius:"50% 0",
+          width:5+Math.random()*6,height:5+Math.random()*6,
+          background:`rgba(255,${140+Math.random()*60},${170+Math.random()*40},.85)`,
+          left:`${Math.random()*100}%`,top:`-10px`,
+          animation:`fall ${3+Math.random()*5}s linear infinite`,
+          animationDelay:`${Math.random()*8}s`}}/>
+      ))}
+      {/* แสงแดด */}
+      <div style={{position:"absolute",right:"15%",top:"6%",width:60,height:60,borderRadius:"50%",
+        background:"radial-gradient(circle,rgba(255,240,100,.9) 0%,rgba(255,200,50,.5) 50%,transparent 70%)",
+        filter:"blur(3px)",animation:"pulse 4s ease-in-out infinite"}}/>
+      {/* ดอกไม้เล็กๆ ที่พื้น */}
+      {[[12,7],[25,5],[45,8],[62,6],[78,7],[88,5]].map(([l,s],i)=>(
+        <div key={i} style={{position:"absolute",bottom:"30%",left:`${l}%`,fontSize:s+8}}>🌸</div>
+      ))}
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.08) 100%)"}}/>
+    </div>
+  );
+}
+
+// ── กลางคืน: หน้าอื่นๆ ──
+function SakuraBackground(){
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
+      {/* ภาพพื้นหลังกลางคืน */}
+      <div style={{position:"absolute",inset:0,
+        backgroundImage:`url("${img3}")`,
+        backgroundSize:"cover",backgroundPosition:"center",backgroundRepeat:"no-repeat"}}/>
+      {/* overlay มืดเล็กน้อยให้อ่านง่าย */}
+      <div style={{position:"absolute",inset:0,background:"rgba(5,2,20,.45)"}}/>
+      {/* ดาวระยิบระยับ */}
+      {Array.from({length:60},(_,i)=>(
+        <div key={i} style={{position:"absolute",borderRadius:"50%",background:"#fff",
+          width:Math.random()*2+.5,height:Math.random()*2+.5,
+          left:`${(i*13)%100}%`,top:`${(i*7)%50}%`,
+          opacity:(i%5)*.15+.1,
+          animation:`pulse ${1.5+(i%5)*.5}s ease-in-out infinite`,
+          animationDelay:`${(i%8)*.5}s`}}/>
+      ))}
+      {/* กลีบร่วง */}
+      {Array.from({length:15},(_,i)=>(
+        <div key={i} style={{position:"absolute",borderRadius:"50% 0",
+          width:4+i*.4,height:4+i*.4,
+          background:"rgba(245,140,175,.75)",
+          left:`${i*7}%`,top:"-10px",
+          animation:`fall ${4.5+i*.4}s linear infinite`,
+          animationDelay:`${i*.6}s`}}/>
+      ))}
+      {/* หิ่งห้อย */}
+      {Array.from({length:8},(_,i)=>(
+        <div key={i} style={{position:"absolute",width:4,height:4,borderRadius:"50%",
+          background:"#a8ff60",boxShadow:"0 0 6px #a8ff60",
+          left:`${15+i*10}%`,bottom:`${20+i*5}%`,
+          animation:`pulse ${1.5+i*.4}s ease-in-out infinite`,
+          animationDelay:`${i*.8}s`}}/>
+      ))}
+    </div>
+  );
+}
+function SakuraBackground_UNUSED(){
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,#050210 0%,#100530 22%,#1e0848 40%,#3d1268 56%,#8a2468 70%,#c04858 82%,#d87048 90%,#e8a848 96%,#f5d060 100%)"}}/>
+      {Array.from({length:100},(_,i)=>(
+        <div key={i} style={{position:"absolute",borderRadius:"50%",background:"#fff",
+          width:Math.random()*2+.5,height:Math.random()*2+.5,
+          left:`${Math.random()*100}%`,top:`${Math.random()*58}%`,
+          opacity:Math.random()*.8+.1,
+          animation:`pulse ${1.5+Math.random()*2.5}s ease-in-out infinite`,
+          animationDelay:`${Math.random()*5}s`}}/>
+      ))}
+      {/* จันทร์เต็มดวง */}
+      <div style={{position:"absolute",right:"11%",top:"6%",width:56,height:56,borderRadius:"50%",
+        background:"radial-gradient(circle at 35% 32%,#fffce8,#f5e878,#e8d050)",
+        boxShadow:"0 0 30px rgba(255,230,80,.6),0 0 70px rgba(255,210,60,.2)"}}/>
+      {/* ภูเขากลางคืน */}
+      <svg style={{position:"absolute",bottom:"29%",left:0,width:"100%"}} height="220" viewBox="0 0 1400 220" preserveAspectRatio="none">
+        <path d="M0,220 L0,130 L140,52 L280,118 L420,32 L560,108 L700,18 L840,95 L980,38 L1120,115 L1260,55 L1400,105 L1400,220 Z" fill="#0e0420" opacity=".95"/>
+        <path d="M420,32 L448,68 L392,68 Z" fill="rgba(240,225,255,.5)"/>
+        <path d="M700,18 L728,54 L672,54 Z" fill="rgba(240,225,255,.52)"/>
+        <path d="M980,38 L1005,70 L955,70 Z" fill="rgba(240,225,255,.45)"/>
+        {/* หน้าต่างไฟในบ้าน */}
+        {[[90,85],[155,78],[310,62],[490,70],[680,65],[870,70],[1060,62],[1195,70]].map(([x,y],i)=>(
+          <rect key={i} x={x} y={y} width="5" height="4" rx="1" fill="#ffe08066" opacity=".8"/>
+        ))}
+      </svg>
+      {/* พื้นกลางคืน */}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:"31%",
+        background:"linear-gradient(180deg,#0e0428 0%,#080218 100%)"}}/>
+      {/* แม่น้ำกลางคืน */}
+      <div style={{position:"absolute",bottom:"13%",left:0,right:0,height:"8%",
+        background:"linear-gradient(180deg,rgba(80,30,140,.6),rgba(40,10,90,.75))",
+        borderTop:"1px solid rgba(180,100,220,.25)"}}>
+        <div style={{position:"absolute",top:0,left:0,right:0,height:2,
+          background:"linear-gradient(90deg,transparent,rgba(255,200,255,.45),transparent)",
+          animation:"shimmer 3s ease-in-out infinite"}}/>
+        {/* แสงสะท้อนจันทร์ */}
+        <div style={{position:"absolute",top:"20%",left:"45%",width:"10%",height:2,
+          background:"rgba(255,240,180,.25)",borderRadius:4,filter:"blur(2px)"}}/>
+      </div>
+      {/* ต้นซากุระ กลางคืน ซ้าย */}
+      {[{l:"0%",h:185,w:118},{l:"8%",h:248,w:158},{l:"18%",h:205,w:138}].map((t,i)=>(
+        <div key={i} style={{position:"absolute",bottom:"27%",left:t.l,width:t.w,height:t.h}}>
+          <div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",
+            width:t.w*.07,height:t.h*.42,background:"#1a0808",borderRadius:4}}/>
+          {Array.from({length:9},(_,j)=>(
+            <div key={j} style={{position:"absolute",borderRadius:"50%",
+              width:t.w*(.28+Math.random()*.28),height:t.w*(.28+Math.random()*.28),
+              left:`${Math.random()*58+12}%`,top:`${Math.random()*44}%`,
+              background:j%3===0?"rgba(220,80,130,.65)":j%3===1?"rgba(185,60,110,.6)":"rgba(240,110,155,.55)"}}/>
+          ))}
+        </div>
+      ))}
+      {/* ต้นซากุระ กลางคืน ขวา */}
+      {[{r:"0%",h:192,w:122},{r:"9%",h:255,w:162},{r:"19%",h:198,w:132}].map((t,i)=>(
+        <div key={i} style={{position:"absolute",bottom:"27%",right:t.r,width:t.w,height:t.h}}>
+          <div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",
+            width:t.w*.07,height:t.h*.42,background:"#1a0808",borderRadius:4}}/>
+          {Array.from({length:9},(_,j)=>(
+            <div key={j} style={{position:"absolute",borderRadius:"50%",
+              width:t.w*(.28+Math.random()*.28),height:t.w*(.28+Math.random()*.28),
+              left:`${Math.random()*58+12}%`,top:`${Math.random()*44}%`,
+              background:j%3===0?"rgba(225,90,140,.68)":j%3===1?"rgba(190,65,115,.62)":"rgba(245,115,160,.58)"}}/>
+          ))}
+        </div>
+      ))}
+      {/* กลีบร่วง */}
+      {Array.from({length:18},(_,i)=>(
+        <div key={i} style={{position:"absolute",borderRadius:"50% 0",
+          width:5+Math.random()*5,height:5+Math.random()*5,
+          background:"rgba(245,140,175,.75)",
+          left:`${Math.random()*100}%`,top:"-10px",
+          animation:`fall ${5+Math.random()*6}s linear infinite`,
+          animationDelay:`${Math.random()*9}s`}}/>
+      ))}
+      {/* หิ่งห้อย */}
+      {Array.from({length:10},(_,i)=>(
+        <div key={i} style={{position:"absolute",width:4,height:4,borderRadius:"50%",
+          background:"#a8ff60",
+          left:`${12+Math.random()*76}%`,bottom:`${28+Math.random()*14}%`,
+          boxShadow:"0 0 6px #a8ff60",
+          animation:`glow ${1.5+Math.random()*2.5}s ease-in-out infinite`,
+          animationDelay:`${Math.random()*5}s`}}/>
+      ))}
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,transparent 38%,rgba(3,1,12,.5) 100%)"}}/>
+    </div>
+  );
+}
+function VeniceBackground(){
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,#0f1e35 0%,#162840 25%,#1e3a6a 50%,#224265 70%,#1a3050 100%)"}}/>
+      <div style={{position:"absolute",right:"18%",top:"36%",width:100,height:100,borderRadius:"50%",
+        background:"radial-gradient(circle,rgba(255,210,100,.45) 0%,rgba(255,160,60,.18) 50%,transparent 70%)",
+        filter:"blur(8px)"}}/>
+      {Array.from({length:35},(_,i)=>(
+        <div key={i} style={{position:"absolute",borderRadius:"50%",background:"#fff",
+          width:1.5,height:1.5,left:`${Math.random()*100}%`,top:`${Math.random()*40}%`,
+          opacity:Math.random()*.6+.15,animation:`pulse ${2+Math.random()*3}s ease-in-out infinite`,
+          animationDelay:`${Math.random()*4}s`}}/>
+      ))}
+      <div style={{position:"absolute",right:"8%",top:"9%",width:48,height:48,borderRadius:"50%",
+        background:"radial-gradient(circle at 38% 35%,#fff9e0,#d4c06090)",
+        boxShadow:"0 0 34px rgba(220,200,100,.5),0 0 70px rgba(220,200,100,.18)"}}/>
+      <div style={{position:"absolute",left:0,right:0,top:"60%",height:"8%",
+        background:"linear-gradient(0deg,transparent,rgba(255,170,70,.09))",filter:"blur(6px)"}}/>
+      <svg style={{position:"absolute",bottom:"26%",left:0,width:"100%"}} height="130" viewBox="0 0 1400 130" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="bldg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1e3858"/>
+            <stop offset="100%" stopColor="#122438"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,130 L0,85 L50,85 L50,65 L65,55 L80,65 L80,85 L110,85 L110,50 L120,38 L130,50 L130,85 L165,85 L165,70 L180,58 L195,70 L195,85 L220,85 L220,55 L235,42 L240,32 L245,42 L260,55 L260,85 L295,85 L295,68 L310,56 L325,68 L325,85 L350,85 L350,72 L365,62 L365,72 L385,72 L385,85 L415,85 L415,50 L425,38 L432,28 L439,38 L450,50 L450,85 L480,85 L480,62 L495,50 L510,62 L510,85 L540,85 L540,70 L555,58 L555,70 L575,70 L575,85 L605,85 L605,52 L618,40 L625,30 L632,40 L645,52 L645,85 L675,85 L675,65 L690,53 L705,65 L705,85 L735,85 L735,72 L748,62 L748,72 L765,72 L765,85 L795,85 L795,50 L808,38 L815,28 L822,38 L835,50 L835,85 L865,85 L865,65 L878,53 L893,65 L893,85 L920,85 L920,72 L933,62 L946,72 L946,85 L975,85 L975,52 L988,40 L995,30 L1002,40 L1015,52 L1015,85 L1045,85 L1045,68 L1058,56 L1073,68 L1073,85 L1100,85 L1100,55 L1113,42 L1118,32 L1123,42 L1138,55 L1138,85 L1168,85 L1168,70 L1181,58 L1196,70 L1196,85 L1220,85 L1220,50 L1233,38 L1240,28 L1247,38 L1260,50 L1260,85 L1290,85 L1290,65 L1305,53 L1320,65 L1320,85 L1350,85 L1350,72 L1365,60 L1380,72 L1380,85 L1400,85 L1400,130 Z" fill="url(#bldg)"/>
+        <ellipse cx="240" cy="30" rx="14" ry="11" fill="#1a2e48"/>
+        <ellipse cx="625" cy="28" rx="14" ry="11" fill="#1a2e48"/>
+        <ellipse cx="815" cy="26" rx="14" ry="11" fill="#1a2e48"/>
+        <ellipse cx="1240" cy="26" rx="14" ry="11" fill="#1a2e48"/>
+        <rect x="428" y="8" width="9" height="35" fill="#142438"/>
+        <polygon points="428,8 432.5,0 437,8" fill="#142438"/>
+        <rect x="1113" y="8" width="9" height="35" fill="#142438"/>
+        <polygon points="1113,8 1117.5,0 1122,8" fill="#142438"/>
+        {[[90,65],[155,72],[310,62],[490,65],[690,68],[880,68],[1065,62],[1180,65]].map(([x,y],i)=>(
+          <rect key={i} x={x} y={y} width="5" height="4" rx="1" fill="#ffe08055" opacity=".8"/>
+        ))}
+      </svg>
+      <div style={{position:"absolute",bottom:"16%",left:0,right:0,height:"10%",
+        background:"linear-gradient(180deg,rgba(36,68,120,.65) 0%,rgba(24,50,90,.45) 100%)"}}/>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:"26%",
+        background:"linear-gradient(180deg,#162840 0%,#1e3a58 35%,#224060 70%,#1a3248 100%)",
+        borderTop:"1px solid rgba(120,180,240,.22)"}}>
+        {Array.from({length:9},(_,i)=>(
+          <div key={i} style={{position:"absolute",left:"3%",right:"3%",height:1,
+            background:`rgba(120,180,240,${.08+i*.012})`,
+            top:`${12+i*9}%`,borderRadius:2,
+            animation:`waterShimmer ${2.5+i*.4}s ease-in-out infinite`,animationDelay:`${i*.35}s`}}/>
+        ))}
+        <div style={{position:"absolute",top:0,left:"18%",width:6,height:"55%",
+          background:"linear-gradient(180deg,rgba(255,230,100,.22),transparent)",borderRadius:3,
+          animation:"waterShimmer 3s ease-in-out infinite"}}/>
+        <div style={{position:"absolute",top:0,right:"22%",width:4,height:"40%",
+          background:"linear-gradient(180deg,rgba(255,230,100,.16),transparent)",borderRadius:3,
+          animation:"waterShimmer 3.5s ease-in-out infinite",animationDelay:"1s"}}/>
+        <div style={{position:"absolute",bottom:"32%",left:"12%",animation:"gondola 4s ease-in-out infinite",fontSize:30,filter:"drop-shadow(0 3px 6px rgba(0,0,0,.6))"}}>🛶</div>
+        <div style={{position:"absolute",bottom:"22%",right:"18%",animation:"gondola 5s ease-in-out infinite",animationDelay:"1.8s",fontSize:22,opacity:.75,filter:"drop-shadow(0 3px 6px rgba(0,0,0,.6))"}}>🛶</div>
+        <div style={{position:"absolute",bottom:"28%",left:"55%",animation:"gondola 6s ease-in-out infinite",animationDelay:".8s",fontSize:18,opacity:.55,filter:"drop-shadow(0 3px 6px rgba(0,0,0,.5))"}}>🛶</div>
+      </div>
+      {[6,18,32,46,60,74,88].map((l,i)=>(
+        <div key={i} style={{position:"absolute",left:`${l}%`,bottom:"25.5%",
+          width:5,height:5,borderRadius:"50%",background:"#ffe090",
+          boxShadow:`0 0 10px rgba(255,220,80,.9),0 0 24px rgba(255,200,60,.4)`,
+          animation:`pulse ${1.8+i*.25}s ease-in-out infinite`,animationDelay:`${i*.45}s`}}/>
+      ))}
+      <div style={{position:"absolute",inset:0,opacity:.04,
+        backgroundImage:"linear-gradient(rgba(120,180,240,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(120,180,240,.5) 1px,transparent 1px)",
+        backgroundSize:"60px 60px"}}/>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,transparent 40%,rgba(8,18,35,.45) 100%)"}}/>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────
-// MAIN APP (ตรวจสอบให้แน่ใจว่าบรรทัดถัดไปคือ export default function App)
+// MINI COMPONENTS
 // ─────────────────────────────────────────────
+const RANK_BAR_COLORS:Record<string,{fill:string,glow:string,next:string}> = {
+  "IRON":      {fill:"linear-gradient(90deg,#4a5568,#718096,#a0aec0)", glow:"#9aacbf", next:"#ffb86a"},
+  "BRONZE II": {fill:"linear-gradient(90deg,#7b3a10,#c05a20,#e07a40)", glow:"#e07a40", next:"#ffb86a"},
+  "BRONZE I":  {fill:"linear-gradient(90deg,#a04a10,#ff9840,#ffcc80)", glow:"#ff9840", next:"#c8ddf0"},
+  "SILVER II": {fill:"linear-gradient(90deg,#4a6a8a,#8ab0d0,#c8ddf0)", glow:"#c8ddf0", next:"#c8ddf0"},
+  "SILVER I":  {fill:"linear-gradient(90deg,#5a7a9a,#9ac0e0,#d8eaf8)", glow:"#d8eaf8", next:"#f5cc70"},
+  "GOLD":      {fill:"linear-gradient(90deg,#c8902a,#f5cc70,#ffe89a)", glow:"#f5cc70", next:"#e0ccff"},
+  "PLATINUM":  {fill:"linear-gradient(90deg,#5a3a9a,#9a7ae0,#c8aaff)", glow:"#c8aaff", next:"#a8d8ff"},
+  "DIAMOND":   {fill:"linear-gradient(90deg,#1a4a8a,#5aaee8,#a8d8ff)", glow:"#a8d8ff", next:"#a8d8ff"},
+};
 
-export default function App() {
+function XPBar({xp,maxXP=MAX_XP,showLabel=true}){
+  const pct=Math.min(100,(xp/maxXP)*100);
+  const rank=getRank(xp);
+  const rc=RANK_BAR_COLORS[rank.label]||RANK_BAR_COLORS["IRON"];
+  const nextRank=XP_RANKS.slice().reverse().find(r=>r.minXP>xp);
+  return(
+    <div>
+      {showLabel&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontSize:12}}>
+        <span style={{color:"var(--muted2)"}}>{rank.label}</span>
+        <span className="mono" style={{color:rc.glow}}>{xp.toLocaleString()} / {maxXP.toLocaleString()} XP</span>
+      </div>}
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        {showLabel&&<div className="mono" style={{fontSize:10,color:rank.color,minWidth:14}}>{rank.icon}</div>}
+        <div style={{flex:1,position:"relative"}}>
+          <div style={{height:14,background:"rgba(14,26,43,.9)",borderRadius:7,overflow:"visible",border:"1px solid rgba(212,168,67,.18)",position:"relative"}}>
+            <div style={{width:`${pct}%`,height:"100%",background:rc.fill,borderRadius:7,transition:"width 1.2s ease",minWidth:pct>0?14:0,position:"relative"}}>
+              <div style={{position:"absolute",right:-7,top:"50%",transform:"translateY(-50%)",
+                width:18,height:18,borderRadius:"50%",
+                background:`radial-gradient(circle,#fff 0%,${rc.glow} 35%,${rc.glow}44 60%,transparent 75%)`,
+                boxShadow:`0 0 10px 4px ${rc.glow}99,0 0 22px 8px ${rc.glow}44`,
+                animation:"glowPulse 1.6s ease-in-out infinite",zIndex:2}}/>
+            </div>
+            {XP_RANKS.slice().reverse().map(r=>(
+              <div key={r.minXP} style={{position:"absolute",left:`${(r.minXP/maxXP)*100}%`,top:-2,width:1,height:18,background:"rgba(255,255,255,.15)"}}/>
+            ))}
+          </div>
+        </div>
+        {showLabel&&<div className="mono" style={{fontSize:10,color:nextRank?.color||rc.next,minWidth:14}}>{nextRank?.icon||"🏁"}</div>}
+      </div>
+      {showLabel&&nextRank&&<div style={{textAlign:"right",fontSize:10,color:"var(--muted)",marginTop:3}}>
+        อีก <span style={{color:rc.glow,fontWeight:700}}>{(nextRank.minXP-xp).toLocaleString()} XP</span> → {nextRank.label}
+      </div>}
+    </div>
+  );
+}
+
+function GradeTag({xp,big=false}){
+  const r=getRank(xp);
+  return(
+    <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",
+      background:`${r.color}20`,border:`2px solid ${r.color}70`,
+      borderRadius:8,padding:big?"10px 18px":"6px 12px",textAlign:"center"}}>
+      <div style={{fontSize:big?18:14}}>{r.icon}</div>
+      <div className="cond" style={{fontSize:big?38:22,fontWeight:900,color:r.color,lineHeight:1,
+        textShadow:`0 0 18px ${r.color}66`}}>{r.grade}</div>
+      <div className="mono" style={{fontSize:big?10:8,color:r.color,letterSpacing:1,marginTop:1}}>GRADE</div>
+    </div>
+  );
+}
+
+function ProgressFlag({xp}){
+  const pct=Math.min(100,(xp/MAX_XP)*100);
+  return(
+    <div style={{position:"relative",marginTop:8}}>
+      <div style={{height:14,background:"rgba(14,26,43,.8)",borderRadius:7,border:"1px solid var(--border)",position:"relative",overflow:"visible"}}>
+        <div style={{width:`${pct}%`,height:"100%",background:"linear-gradient(90deg,#1a3a6a,#5aaee8,#f5cc70)",borderRadius:"7px 0 0 7px",transition:"width 1.2s ease",minWidth:pct>0?14:0,position:"relative"}}>
+          <div style={{position:"absolute",right:-8,top:-6,fontSize:18,filter:"drop-shadow(0 2px 4px rgba(0,0,0,.8))"}}>🪖</div>
+        </div>
+        {XP_RANKS.slice().reverse().map(r=>(
+          <div key={r.minXP} style={{position:"absolute",left:`${(r.minXP/MAX_XP)*100}%`,top:-2,width:1,height:18,background:"rgba(255,255,255,.22)"}}/>
+        ))}
+        <div style={{position:"absolute",right:-4,top:-8,fontSize:20,animation:"flagWave 2s ease-in-out infinite"}}>🏁</div>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:5,fontSize:10,color:"var(--muted)"}}>
+        <span className="mono">0 XP</span>
+        <span className="mono">{MAX_XP.toLocaleString()} XP</span>
+      </div>
+    </div>
+  );
+}
+
+function Top3Card({students,assignments}){
+  const withEff=students.map((s:any)=>({s,eff:getEffectiveXP(s,assignments)}));
+  const sorted=withEff.sort((a,b)=>b.eff-a.eff).slice(0,3);
+  const medals=["🥇","🥈","🥉"],mc=["#f5cc70","#c8c8c8","#cd7f32"];
+  return(
+    <div className="card card-gold" style={{marginBottom:16}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:14}}>🏆 TOP 3</div>
+      <div style={{display:"flex",gap:10}}>
+        {sorted.map(({s,eff},i)=>{const r=getRank(eff);return(
+          <div key={s.id} style={{flex:1,textAlign:"center",padding:"12px 8px",
+            background:i===0?"rgba(232,188,85,.12)":"rgba(255,255,255,.05)",
+            border:`1px solid ${i===0?"rgba(232,188,85,.4)":"var(--border)"}`,borderRadius:8}}>
+            <div style={{fontSize:24}}>{medals[i]}</div>
+            <div style={{fontSize:30,margin:"4px 0"}}>{s.avatar}</div>
+            <div style={{fontSize:12,color:"#fff",fontWeight:600,lineHeight:1.3}}>{s.name.split(" ").slice(1).join(" ")}</div>
+            <div className="mono" style={{fontSize:16,fontWeight:700,color:mc[i],marginTop:4}}>{eff.toLocaleString()}</div>
+            <div style={{fontSize:10,color:"var(--muted)"}}>XP ({xpToScore(eff)} คะแนน)</div>
+            <div className="badge" style={{marginTop:8,background:`${r.color}20`,border:`1px solid ${r.color}50`,color:r.color,fontSize:9,lineHeight:1.5}}>{r.icon} {r.label}</div>
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+}
+
+function GradeTable(){
+  return(
+    <div className="card" style={{overflow:"hidden"}}>
+      <div style={{background:"rgba(232,188,85,.1)",border:"1px solid rgba(232,188,85,.3)",borderRadius:8,padding:"10px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:14}}>
+        <div style={{fontSize:26}}>⚡</div>
+        <div>
+          <div className="mono" style={{fontSize:13,color:"#f0a0c0",fontWeight:700,letterSpacing:1}}>1 คะแนน = 25 XP</div>
+          <div style={{fontSize:12,color:"var(--muted2)",marginTop:2}}>XP เต็มเทอม 2,500 XP = 100 คะแนน</div>
+        </div>
+      </div>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:14}}>📊 เกณฑ์ XP → เกรด</div>
+      <div style={{overflowX:"auto"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1.4fr 1.2fr 1fr .5fr .8fr",gap:1,background:"var(--border)",minWidth:480}}>
+          {["RANK","XP","คะแนน","เกรด","สถานะ"].map(h=>(
+            <div key={h} style={{background:"var(--bg3)",padding:"7px 10px",fontSize:11,color:"var(--muted2)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,whiteSpace:"nowrap"}}>{h}</div>
+          ))}
+          {XP_RANKS.map(r=>[
+            <div key={r.label+"a"} style={{background:"var(--bg2)",padding:"7px 10px",fontSize:12,display:"flex",gap:6,alignItems:"center",whiteSpace:"nowrap"}}><span>{r.icon}</span><span style={{color:r.color,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{r.label}</span></div>,
+            <div key={r.label+"b"} style={{background:"var(--bg2)",padding:"7px 10px",fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:"var(--text)",whiteSpace:"nowrap"}}>{r.minXP.toLocaleString()}–{r.maxXP.toLocaleString()}</div>,
+            <div key={r.label+"c"} style={{background:"var(--bg2)",padding:"7px 10px",fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:"var(--muted2)",whiteSpace:"nowrap"}}>{r.scoreRange}</div>,
+            <div key={r.label+"d"} style={{background:"var(--bg2)",padding:"7px 10px",fontFamily:"'Share Tech Mono',monospace",fontSize:16,fontWeight:700,color:r.color}}>{r.grade}</div>,
+            <div key={r.label+"e"} style={{background:"var(--bg2)",padding:"7px 10px",fontSize:12,color:"var(--muted2)",whiteSpace:"nowrap"}}>{r.desc}</div>,
+          ])}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// AIRDROP POPUP
+// ─────────────────────────────────────────────
+function useAirdropParticles(){
+  const canvasRef=useRef<HTMLCanvasElement>(null);
+  const ptsRef=useRef<any[]>([]);
+  const rafRef=useRef<any>(null);
+  function burst(color:string,n=70){
+    const c=canvasRef.current;if(!c)return;
+    const cx=c.width/2,cy=c.height/2;
+    for(let i=0;i<n;i++){
+      const p:any={x:cx,y:cy,c:i%4===0?"#ffffff":i%7===0?"#ffe89a":color,
+        vx:(Math.random()-.5)*16,vy:(Math.random()-.5)*16-8,
+        life:1,r:Math.random()*7+3,g:.38,rot:Math.random()*6.28,
+        rs:(Math.random()-.5)*.28,star:Math.random()<.45};
+      ptsRef.current.push(p);
+    }
+    cancelAnimationFrame(rafRef.current);
+    function anim(){
+      const cv=canvasRef.current;if(!cv)return;
+      const ctx=cv.getContext("2d")!;
+      ctx.clearRect(0,0,cv.width,cv.height);
+      ptsRef.current=ptsRef.current.filter(p=>p.life>0);
+      ptsRef.current.forEach(p=>{
+        p.x+=p.vx;p.y+=p.vy;p.vy+=p.g;p.vx*=.97;p.life-=.019;p.rot+=p.rs;
+        if(p.life<=0)return;
+        ctx.save();ctx.globalAlpha=Math.max(0,p.life);
+        ctx.shadowBlur=12;ctx.shadowColor=p.c;ctx.fillStyle=p.c;
+        ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+        if(p.star){
+          ctx.beginPath();
+          for(let i=0;i<10;i++){const r2=i%2?p.r*.4:p.r,a=i*Math.PI/5-Math.PI/2;i?ctx.lineTo(r2*Math.cos(a),r2*Math.sin(a)):ctx.moveTo(r2*Math.cos(a),r2*Math.sin(a));}
+          ctx.closePath();ctx.fill();
+        }else{ctx.beginPath();ctx.arc(0,0,p.r/2,0,6.28);ctx.fill();}
+        ctx.restore();
+      });
+      if(ptsRef.current.length>0)rafRef.current=requestAnimationFrame(anim);
+    }
+    anim();
+  }
+  return{canvasRef,burst};
+}
+
+function playAirdropFX(rarity:string){
+  try{
+    const AC=(window as any).AudioContext||(window as any).webkitAudioContext;
+    const ac=new AC();
+    const freqs=rarity==="LEGENDARY"?[523,659,784,988,1047,1319]:
+                rarity==="EPIC"?[440,554,659,880,1047]:
+                rarity==="RARE"?[392,494,587,784]:[330,415,494];
+    freqs.forEach((f:number,i:number)=>{
+      const o=ac.createOscillator(),g=ac.createGain();
+      o.connect(g);g.connect(ac.destination);
+      o.frequency.value=f;
+      o.type=rarity==="LEGENDARY"?"sawtooth":rarity==="EPIC"?"square":"sine";
+      const t=ac.currentTime+i*.1;
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3,t+.06);g.gain.exponentialRampToValueAtTime(.001,t+.55);
+      o.start(t);o.stop(t+.55);
+    });
+    if(rarity==="LEGENDARY"){
+      const n=ac.createOscillator(),ng=ac.createGain();
+      n.type="sawtooth";n.frequency.value=55;n.connect(ng);ng.connect(ac.destination);
+      ng.gain.setValueAtTime(.15,ac.currentTime);ng.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.5);
+      n.start(ac.currentTime);n.stop(ac.currentTime+.5);
+    }
+  }catch(e){}
+}
+
+function AirdropPendingBanner({airdrop,onOpen}:{airdrop:any,onOpen:()=>void}){
+  return(
+    <div style={{position:"fixed",top:54,left:0,right:0,zIndex:500,
+      background:"linear-gradient(90deg,rgba(232,188,85,.12),rgba(232,188,85,.25),rgba(232,188,85,.12))",
+      borderBottom:"1px solid rgba(232,188,85,.45)",
+      padding:"10px 20px",display:"flex",alignItems:"center",gap:14}}>
+      <div style={{fontSize:28,animation:"shake 1s ease-in-out infinite"}}>📦</div>
+      <div style={{flex:1}}>
+        <div style={{fontSize:14,fontWeight:600,color:"#f0a0c0"}}>มี Airdrop รอคุณอยู่!</div>
+        <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>ครูส่งรางวัลให้คุณ กดเปิดเพื่อรับ</div>
+      </div>
+      <button className="btn btn-gold" onClick={onOpen} style={{padding:"8px 20px",fontSize:14,animation:"glow 2s ease-in-out infinite"}}>📦 เปิด!</button>
+    </div>
+  );
+}
+
+function AirdropPopup({airdrop,onClaim}:{airdrop:any,onClaim:()=>void}){
+  const {canvasRef,burst}=useAirdropParticles();
+  const [show,setShow]=useState(false);
+  const [flashOpacity,setFlashOpacity]=useState(0);
+  const overlayRef=useRef<HTMLDivElement>(null);
+
+  useEffect(()=>{
+    playAirdropFX(airdrop.rarity||"COMMON");
+    // flash
+    setFlashOpacity(.6);
+    setTimeout(()=>setFlashOpacity(0),150);
+    // burst x2
+    setTimeout(()=>burst(airdrop.color||"#f5cc70",airdrop.rarity==="LEGENDARY"?110:airdrop.rarity==="EPIC"?85:60),100);
+    setTimeout(()=>setShow(true),180);
+    if(airdrop.rarity==="LEGENDARY"||airdrop.rarity==="EPIC"){
+      setTimeout(()=>{burst(airdrop.color||"#f5cc70",60);setFlashOpacity(.4);setTimeout(()=>setFlashOpacity(0),120);},750);
+    }
+    // resize canvas
+    const el=overlayRef.current;
+    if(el){const c=canvasRef.current;if(c){c.width=el.offsetWidth;c.height=el.offsetHeight;}}
+  },[]);
+
+  const c=airdrop.color||"#f5cc70";
+  const rays=Array.from({length:14},(_,i)=>i);
+
+  return(
+    <div className="overlay" style={{zIndex:2000}} ref={overlayRef}>
+      {/* canvas particles */}
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,pointerEvents:"none",zIndex:1,width:"100%",height:"100%"}}/>
+      {/* flash */}
+      <div style={{position:"absolute",inset:0,background:"#fff",opacity:flashOpacity,transition:"opacity .4s",pointerEvents:"none",zIndex:2}}/>
+      {/* card */}
+      <div style={{position:"relative",zIndex:3,textAlign:"center",maxWidth:380,width:"100%",
+        transform:show?"translateY(0) scale(1)":"translateY(-40px) scale(.6)",
+        opacity:show?1:0,transition:"transform .6s cubic-bezier(.34,1.56,.64,1),opacity .4s"}}>
+        {/* icon + rings + rays */}
+        <div style={{position:"relative",display:"inline-block",marginBottom:16,width:130,height:130}}>
+          {[0,1].map(i=>(
+            <div key={i} style={{position:"absolute",inset:0,borderRadius:"50%",
+              border:`2px solid ${c}`,opacity:0,
+              animation:`routr 1.2s ease-out ${i*.45}s infinite`}}/>
+          ))}
+          <div style={{position:"absolute",inset:-28,zIndex:0}}>
+            {rays.map(i=>(
+              <div key={i} style={{position:"absolute",top:"50%",left:"50%",width:2,height:0,
+                background:`linear-gradient(to right,transparent,${c})`,
+                borderRadius:1,transformOrigin:"0 50%",
+                transform:`rotate(${i*25.7}deg) translateY(-50%)`,
+                animation:`rout .7s ease-out ${i*.035}s forwards`}}/>
+            ))}
+          </div>
+          <div style={{fontSize:86,lineHeight:"130px",position:"relative",zIndex:1,
+            animation:`iconGlow 2s ease-in-out infinite`,
+            filter:`drop-shadow(0 0 20px ${c})`}}>{airdrop.icon}</div>
+        </div>
+        <div className="cond" style={{fontSize:12,color:"var(--muted2)",letterSpacing:4,marginBottom:6,
+          opacity:show?1:0,transform:show?"translateY(0)":"translateY(8px)",transition:"all .3s .3s"}}>
+          📦 AIRDROP INCOMING!
+        </div>
+        <div className="cond" style={{fontSize:36,fontWeight:900,color:c,marginBottom:8,
+          textShadow:`0 0 28px ${c}`,
+          opacity:show?1:0,transform:show?"translateY(0)":"translateY(10px)",transition:"all .3s .45s"}}>
+          {airdrop.name}
+        </div>
+        <div className="badge" style={{background:`${c}20`,border:`1px solid ${c}60`,color:c,
+          fontSize:13,padding:"5px 14px",marginBottom:10,display:"inline-block",
+          opacity:show?1:0,transform:show?"translateY(0)":"translateY(8px)",transition:"all .3s .55s"}}>
+          ★ {airdrop.rarity}
+        </div>
+        {airdrop.note&&<div style={{color:"var(--muted2)",fontSize:14,fontStyle:"italic",marginBottom:14,
+          opacity:show?1:0,transition:"opacity .3s .6s"}}>"{airdrop.note}"</div>}
+        <br/>
+        <button className="btn btn-gold" onClick={()=>{
+          burst(c,90);setFlashOpacity(.5);setTimeout(()=>setFlashOpacity(0),120);
+          setTimeout(onClaim,400);
+        }} style={{fontSize:18,padding:"14px 48px",animation:"glow 2s ease-in-out infinite",
+          opacity:show?1:0,transition:"opacity .3s .7s"}}>✅ รับรางวัล</button>
+      </div>
+      <style>{`
+        @keyframes routr{0%{transform:scale(.4);opacity:.9}100%{transform:scale(2.2);opacity:0}}
+        @keyframes rout{0%{opacity:1;height:0;margin-top:0}70%{opacity:.7;height:55px;margin-top:-27px}100%{opacity:0;height:75px;margin-top:-37px}}
+        @keyframes iconGlow{0%,100%{filter:drop-shadow(0 0 12px ${c})}50%{filter:drop-shadow(0 0 32px ${c}) drop-shadow(0 0 64px ${c})}}
+        @keyframes shake{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+      `}</style>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// LOGIN
+// ─────────────────────────────────────────────
+function LoginScreen({students,onLogin}){
+  const [mode,setMode]=useState("student");
+  const [selRoom,setSelRoom]=useState("r1");
+  const [sel,setSel]=useState("");
+  const [pw,setPw]=useState("");
+  const [err,setErr]=useState("");
+  const roomStudents=students.filter((s:any)=>s.room===selRoom);
+  function doLogin(){
+    setErr("");
+    if(mode==="teacher"){if(pw==="291241"){onLogin("teacher",null);return;}setErr("รหัสผ่านไม่ถูกต้อง");return;}
+    const s=students.find((x:any)=>x.id===sel);
+    if(!s){setErr("กรุณาเลือกชื่อ");return;}
+    if(s.password!==pw){setErr("รหัสผ่านไม่ถูกต้อง");return;}
+    onLogin("student",s.id);
+  }
+  return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative"}}>
+      <SakuraDayBackground/>
+      <div style={{position:"relative",zIndex:1,width:"100%",maxWidth:420}}>
+        <div className="fade-up" style={{textAlign:"center",marginBottom:32}}>
+          <div style={{display:"flex",gap:14,justifyContent:"center",fontSize:52,marginBottom:12,animation:"float 3s ease-in-out infinite"}}>
+            <span>🔬</span><span>🧬</span><span>🌸</span>
+          </div>
+          <div className="cond" style={{fontSize:56,fontWeight:900,letterSpacing:6,color:"#f0a0c0",lineHeight:1,textShadow:"0 0 40px rgba(240,100,180,.6)"}}>SCIENCE</div>
+          <div className="cond" style={{fontSize:22,fontWeight:600,letterSpacing:10,color:"#8a4060",marginTop:2}}>BATTLEGROUND</div>
+          <div className="mono" style={{fontSize:11,color:"var(--muted)",marginTop:8,letterSpacing:3}}>── SAKURA SEASON 2568 ──</div>
+        </div>
+        <div className="card fade-up" style={{animationDelay:".1s",background:"rgba(18,36,62,.9)",backdropFilter:"blur(20px)",border:"1px solid rgba(232,188,85,.3)"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginBottom:22,background:"rgba(18,32,52,.8)",borderRadius:6,padding:4}}>
+            {[["student","🧑‍🎓  นักเรียน"],["teacher","👩‍✈️  ครู"]].map(([m,l])=>(
+              <button key={m} onClick={()=>{setMode(m);setErr("");setPw("");}} className="btn"
+                style={{background:mode===m?"var(--bg3)":"transparent",border:mode===m?"1px solid rgba(232,188,85,.4)":"1px solid transparent",
+                  color:mode===m?"#f0a0c0":"var(--muted)",padding:"10px",borderRadius:4,fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>{l}</button>
+            ))}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {mode==="student"?(
+              <>
+                <div>
+                  <label className="mono" style={{fontSize:10,color:"#8a5070",letterSpacing:2,display:"block",marginBottom:8}}>เลือกห้องเรียน</label>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+                    {ROOMS.map((r:any)=>(
+                      <button key={r.id} onClick={()=>{setSelRoom(r.id);setSel("");}} className="btn"
+                        style={{background:selRoom===r.id?`${r.color}22`:"rgba(255,255,255,.04)",
+                          border:`1px solid ${selRoom===r.id?r.color:"var(--border)"}`,
+                          color:selRoom===r.id?r.color:"var(--muted2)",borderRadius:8,padding:"10px",
+                          fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1}}>
+                        🌸 {r.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="mono" style={{fontSize:10,color:"#8a5070",letterSpacing:2,display:"block",marginBottom:8}}>SELECT PLAYER</label>
+                  <select className="input" value={sel} onChange={e=>setSel(e.target.value)} style={{background:"rgba(255,255,255,.8)",border:"1px solid rgba(200,130,170,.4)",color:"#3a1040"}}>
+                    <option value="">-- เลือกชื่อนักเรียน --</option>
+                    {roomStudents.map((s:any)=><option key={s.id} value={s.id}>{s.avatar} {s.name}</option>)}
+                  </select>
+                </div>
+              </>
+            ):(
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>COMMANDER ID</label>
+                <input className="input" value="teacher" readOnly style={{opacity:.5,background:"rgba(255,255,255,.7)",color:"#3a1040"}}/>
+              </div>
+            )}
+            <div>
+              <label className="mono" style={{fontSize:10,color:"#8a5070",letterSpacing:2,display:"block",marginBottom:8}}>PASSWORD</label>
+              <input className="input" type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
+            </div>
+            {err&&<div style={{background:"rgba(232,96,96,.14)",border:"1px solid rgba(232,96,96,.4)",borderRadius:5,padding:"9px 14px",color:"var(--red)",fontSize:13}}>{err}</div>}
+            <button className="btn btn-pink" onClick={doLogin} style={{marginTop:4}}>▶  DEPLOY INTO ZONE</button>
+          </div>
+          <div style={{height:1,background:"rgba(200,130,170,.3)",margin:"14px 0"}}/>
+          <div className="mono" style={{fontSize:10,color:"#a06080",textAlign:"center",letterSpacing:1}}>SCIENCE BATTLEGROUND © 2568 · SAKURA EDITION</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TOP NAV
+// ─────────────────────────────────────────────
+function TopNav({user,role,page,setPage,onLogout,room,assignments}:any){
+  const sTabs=[{id:"dashboard",label:"DASHBOARD"},{id:"resources",label:"บทเรียน"},{id:"assignments",label:"ส่งงาน"},{id:"ranking",label:"TOP 3"},{id:"inventory",label:"AIRDROP"},{id:"settings",label:"ตั้งค่า"}];
+  const tTabs=[{id:"overview",label:"OVERVIEW"},{id:"students",label:"STUDENTS"},{id:"t-assignments",label:"📋 งาน"},{id:"t-resources",label:"📁 ไฟล์"},{id:"t-scores",label:"⭐ XP"},{id:"t-exam",label:"📝 สอบ"},{id:"t-grades",label:"📊 คะแนน"},{id:"t-airdrop",label:"📦 AIRDROP"},{id:"ranking",label:"RANKING"}];
+  const tabs=role==="teacher"?tTabs:sTabs;
+  return(
+    <div style={{position:"sticky",top:0,zIndex:100,background:"rgba(12,24,42,.96)",backdropFilter:"blur(20px)",borderBottom:"1px solid var(--border)"}}>
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"8px 16px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+          <div className="cond" style={{fontSize:"clamp(16px,4vw,20px)",fontWeight:900,color:"#f0a0c0",letterSpacing:2,flexShrink:0,whiteSpace:"nowrap",textShadow:"0 0 18px rgba(232,188,85,.5)"}}>🔬 SCI·BG</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+            <span style={{fontSize:20,flexShrink:0}}>{user?.avatar||"👩‍✈️"}</span>
+            <div style={{lineHeight:1.3,minWidth:0}}>
+              <div style={{fontSize:12,color:"var(--text)",maxWidth:"28vw",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name||"Commander"}</div>
+              <div className="mono" style={{fontSize:9,color:"var(--muted)",whiteSpace:"nowrap"}}>{role==="teacher"?"COMMANDER":getRank(getEffectiveXP(user,assignments)).label}</div>
+            </div>
+            <button className="btn-outline" onClick={onLogout} style={{padding:"6px 14px",fontSize:11,flexShrink:0,whiteSpace:"nowrap"}}>OUT</button>
+          </div>
+        </div>
+        <div style={{display:"flex",overflowX:"auto",gap:0,marginTop:6,marginLeft:-16,marginRight:-16,paddingLeft:16,paddingRight:16}}>
+          {tabs.map(t=>(
+            <button key={t.id} onClick={()=>setPage(t.id)} className="btn"
+              style={{background:page===t.id?"rgba(232,188,85,.1)":"transparent",padding:"0 14px",height:44,
+                color:page===t.id?"#f0a0c0":"var(--muted2)",
+                borderBottom:page===t.id?"2px solid #f0a0c0":"2px solid transparent",
+                borderRadius:0,fontSize:12,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// PAGE HEADER
+// ─────────────────────────────────────────────
+const PAGE_META = {
+  dashboard:      {label:"DASHBOARD",    back:null},
+  resources:      {label:"บทเรียน / สไลด์",back:"dashboard"},
+  assignments:    {label:"ส่งงาน",        back:"dashboard"},
+  ranking:        {label:"TOP 3 RANKING", back:"dashboard"},
+  inventory:      {label:"AIRDROP รางวัล",back:"dashboard"},
+  settings:       {label:"ตั้งค่า",        back:"dashboard"},
+  overview:       {label:"OVERVIEW",      back:null},
+  students:       {label:"STUDENTS",      back:"overview"},
+  "t-assignments":{label:"จัดการงาน",     back:"overview"},
+  "t-resources":  {label:"จัดการไฟล์",    back:"overview"},
+  "t-scores":     {label:"จัดการ XP",     back:"overview"},
+  "t-exam":       {label:"คะแนนสอบ",      back:"overview"},
+  "t-grades":     {label:"สรุปคะแนนรวม",  back:"overview"},
+  "t-airdrop":    {label:"AIRDROP",       back:"overview"},
+};
+
+function PageHeader({page,setPage}){
+  const meta=PAGE_META[page]||{label:page,back:null};
+  if(!meta.back)return null;
+  return(
+    <div style={{padding:"16px 20px 4px"}}>
+      <div style={{display:"inline-flex",alignItems:"center",gap:10,
+        background:"rgba(24,44,74,.94)",border:"1px solid var(--border2)",
+        borderRadius:8,padding:"8px 18px",backdropFilter:"blur(8px)"}}>
+        <button onClick={()=>setPage(meta.back)} className="btn"
+          style={{background:"transparent",color:"#f0a0c0",fontSize:15,padding:0,letterSpacing:0,fontFamily:"'Noto Sans Thai',sans-serif",fontWeight:600}}>←</button>
+        <span style={{width:1,height:16,background:"var(--border2)"}}/>
+        <span className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2}}>{meta.back.toUpperCase()}</span>
+        <span style={{color:"var(--muted)",fontSize:12}}>›</span>
+        <span className="mono" style={{fontSize:10,color:"#f0a0c0",letterSpacing:2,fontWeight:700}}>{meta.label.toUpperCase()}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SCORE BREAKDOWN
+// ─────────────────────────────────────────────
+function ScoreBreakdown({student, assignments}){
+  const MAX_HALF=35, MAX_MID=15, MAX_FINAL=15;
+  // แบ่งคะแนนเก็บก่อน/หลังกลางภาคตามแท็กของใบงาน+กิจกรรม (ไม่ใช้เกณฑ์ XP สะสมอีกต่อไป)
+  const before=(assignments||[]).filter(a=>(a.phase||"before")==="before");
+  const after=(assignments||[]).filter(a=>(a.phase||"before")==="after");
+  function earnedXP(list){return list.reduce((s,a)=>{const sub=student.submissions?.[a.id];return s+(sub?.graded?sub.xpEarned||0:0);},0);}
+  const logXP=(phase)=>(student.xpLog||[]).reduce((s,l)=>(l.phase||"before")===phase?s+(l.xp||0):s,0);
+  // ใช้ XP จริงตรงๆ (ไม่ปัดเศษเป็นคะแนนก่อนแล้วคูณ 25 กลับ) ให้ตรงกับ "YOUR XP" เป๊ะเสมอ — เดิมปัดเศษ 2 รอบทำให้เลขเพี้ยนได้
+  const xp1=Math.min(875,earnedXP(before)+logXP("before"));
+  const xp2=Math.min(875,earnedXP(after)+logXP("after"));
+  const xpMidRaw=(student.midterm!==null&&student.midterm!==undefined)?Math.min(375,student.midterm*25):null;
+  const xpFinalRaw=(student.final!==null&&student.final!==undefined)?Math.min(375,student.final*25):null;
+  const score1=xpToScore(xp1);
+  const score2=xpToScore(xp2);
+  const scoreMid=student.midterm, scoreFinal=student.final;
+  const totalAnnounced=score1+score2+(scoreMid!==null?scoreMid:0)+(scoreFinal!==null?scoreFinal:0);
+  const maxAnnounced=MAX_HALF+MAX_HALF+(scoreMid!==null?MAX_MID:0)+(scoreFinal!==null?MAX_FINAL:0);
+  const pct1=Math.round((score1/MAX_HALF)*100);
+  const pct2=Math.round((score2/MAX_HALF)*100);
+  const pctMid=scoreMid!==null?Math.round((scoreMid/MAX_MID)*100):null;
+  function tip(){
+    const w=[];
+    if(pct1<60)w.push("คะแนนเก็บก่อนกลางภาค");
+    if(pct2<60)w.push("คะแนนเก็บหลังกลางภาค");
+    if(pctMid!==null&&pctMid<60)w.push("สอบกลางภาค");
+    return w.length?`💡 ควรพัฒนา: ${w.join(", ")}`:null;
+  }
+  const segs=[
+    {label:"เก็บ ก่อนกลางภาค",w:35,bg:"#d8b4fe",txt:"#3b0764",cbg:"rgba(216,180,254,.12)",cbr:"rgba(216,180,254,.35)",bar:"#a78bfa",score:score1,xp:xp1,max:MAX_HALF,pct:pct1,ok:true},
+    {label:"สอบกลางภาค",w:15,bg:"#93c5fd",txt:"#1e3a8a",cbg:"rgba(147,197,253,.12)",cbr:"rgba(147,197,253,.35)",bar:"#60a5fa",score:scoreMid,xp:xpMidRaw,max:MAX_MID,pct:pctMid,ok:scoreMid!==null},
+    {label:"เก็บ หลังกลางภาค",w:35,bg:"#f9a8d4",txt:"#500724",cbg:"rgba(249,168,212,.12)",cbr:"rgba(249,168,212,.35)",bar:"#f472b6",score:score2,xp:xp2,max:MAX_HALF,pct:pct2,ok:true},
+    {label:"สอบปลายภาค",w:15,bg:"#fde68a",txt:"#451a03",cbg:"rgba(253,230,138,.08)",cbr:"rgba(253,230,138,.3)",bar:"#fbbf24",score:scoreFinal,xp:xpFinalRaw,max:MAX_FINAL,pct:null,ok:scoreFinal!==null},
+  ];
+  // รวม XP จริงตรงๆ (ไม่ปัดเศษ) ให้ตรงกับ getEffectiveXP ที่ใช้โชว์ "YOUR XP" เป๊ะเสมอ
+  const xpAnnounced=xp1+xp2+(xpMidRaw||0)+(xpFinalRaw||0);
+  const xpMaxAnnounced=maxAnnounced*25;
+  return(
+    <div className="card" style={{marginBottom:16}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:10}}>📊 สัดส่วนคะแนน 2,500 XP (100 คะแนน)</div>
+      <div style={{display:"flex",borderRadius:10,overflow:"hidden",height:14,marginBottom:10,gap:2}}>
+        {segs.map((s,i)=>(
+          <div key={i} style={{width:`${s.w}%`,background:s.bg,
+            borderRadius:i===0?"6px 0 0 6px":i===3?"0 6px 6px 0":"0"}}></div>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginBottom:10}}>
+        {segs.map((s,i)=>(
+          <div key={i} style={{background:s.cbg,border:`0.5px solid ${s.cbr}`,borderRadius:8,padding:"10px 10px",minWidth:0}}>
+            <div style={{fontSize:11,color:s.bg,fontWeight:600,marginBottom:6,lineHeight:1.3}}>{s.label}</div>
+            <div style={{background:"rgba(0,0,0,.18)",borderRadius:4,overflow:"hidden",height:8,marginBottom:4}}>
+              <div style={{width:`${s.ok&&s.pct!==null?s.pct:0}%`,height:"100%",background:s.bar,borderRadius:4,transition:"width .6s"}}/>
+            </div>
+            {s.ok&&s.score!==null
+              ?<>
+                  <div style={{fontSize:12,color:"var(--text)",fontWeight:600,fontFamily:"'Share Tech Mono',monospace",whiteSpace:"nowrap"}}>{s.xp} XP ({s.score} คะแนน)</div>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:6,fontSize:10,color:"var(--muted)",marginTop:1}}>
+                    <span style={{whiteSpace:"nowrap"}}>เต็ม {s.max*25} XP ({s.max} คะแนน)</span>
+                    <span style={{color:s.bg,flexShrink:0}}>{s.pct}%</span>
+                  </div>
+                </>
+              :<div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>ยังไม่ประกาศ<br/>(เต็ม {s.max*25} XP / {s.max} คะแนน)</div>}
+          </div>
+        ))}
+      </div>
+      <div style={{background:"rgba(232,188,85,.09)",border:"0.5px solid rgba(232,188,85,.28)",borderRadius:8,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:13,color:"var(--muted2)"}}>คะแนนรวมที่ประกาศแล้ว</div>
+        <div><span style={{fontSize:22,fontWeight:700,color:"#f0a0c0"}}>{xpAnnounced.toLocaleString()} XP</span><span style={{fontSize:12,color:"var(--muted)"}}> ({totalAnnounced} คะแนน) / {xpMaxAnnounced.toLocaleString()} XP ({maxAnnounced} คะแนน)</span></div>
+      </div>
+      {tip()&&<div style={{background:"rgba(251,191,36,.09)",border:"0.5px solid rgba(251,191,36,.35)",borderRadius:8,padding:"9px 14px",fontSize:12,color:"#fbbf24",marginTop:8}}>{tip()}</div>}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// STUDENT: DASHBOARD
+// ─────────────────────────────────────────────
+function StudentDashboard({student,students,assignments,setPage,setStudents}){
+  const effXP=getEffectiveXP(student,assignments);
+  const rank=getRank(effXP);
+  const submitted=Object.keys(student.submissions||{}).length;
+  const [pwModal,setPwModal]=useState(false);
+  const [oldPw,setOldPw]=useState("");const [newPw,setNewPw]=useState("");const [cnf,setCnf]=useState("");const [pwMsg,setPwMsg]=useState(null);
+  function changePw(){
+    if(oldPw!==student.password){setPwMsg({t:"err",text:"รหัสผ่านเดิมไม่ถูกต้อง"});return;}
+    if(newPw.length<4){setPwMsg({t:"err",text:"รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัว"});return;}
+    if(newPw!==cnf){setPwMsg({t:"err",text:"รหัสผ่านใหม่ไม่ตรงกัน"});return;}
+    setStudents(prev=>prev.map(s=>s.id===student.id?{...s,password:newPw}:s));
+    setPwMsg({t:"ok",text:"เปลี่ยนรหัสผ่านสำเร็จ! ✅"});
+    setTimeout(()=>{setPwModal(false);setPwMsg(null);setOldPw("");setNewPw("");setCnf("");},1500);
+  }
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:1000,margin:"0 auto"}}>
+      {pwModal&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:420}}>
+            <div className="cond" style={{fontSize:22,color:"#f0a0c0",letterSpacing:2,marginBottom:20}}>🔐 เปลี่ยนรหัสผ่าน</div>
+            {([["รหัสผ่านเดิม",oldPw,setOldPw],["รหัสผ่านใหม่",newPw,setNewPw],["ยืนยันรหัสผ่านใหม่",cnf,setCnf]] as [string,string,any][]).map(([l,v,s])=>(
+              <div key={l} style={{marginBottom:14}}>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>{l.toUpperCase()}</label>
+                <input className="input" type="password" value={v} onChange={e=>s(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&changePw()}/>
+              </div>
+            ))}
+            {pwMsg&&<div style={{background:pwMsg.t==="ok"?"rgba(94,200,126,.14)":"rgba(232,96,96,.14)",border:`1px solid ${pwMsg.t==="ok"?"rgba(94,200,126,.45)":"rgba(232,96,96,.45)"}`,borderRadius:5,padding:"9px 14px",color:pwMsg.t==="ok"?"var(--green)":"var(--red)",fontSize:13,marginBottom:12}}>{pwMsg.text}</div>}
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={changePw} style={{flex:1}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>{setPwModal(false);setPwMsg(null);setOldPw("");setNewPw("");setCnf("");}} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="card card-gold" style={{marginBottom:16,position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",right:-10,top:-10,fontSize:120,opacity:.05,userSelect:"none"}}>{student.avatar}</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:20,alignItems:"center"}}>
+          <div style={{fontSize:60}}>{student.avatar}</div>
+          <div style={{flex:1,minWidth:180}}>
+            <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:4}}>PLAYER PROFILE</div>
+            <div className="cond" style={{fontSize:"clamp(19px,5.5vw,34px)",fontWeight:700,color:"#fff",lineHeight:1.25,marginBottom:10,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{student.name}</div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <span className="badge" style={{background:`${rank.color}20`,border:`1px solid ${rank.color}50`,color:rank.color}}>{rank.icon} {rank.label}</span>
+              <span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ {submitted}/{assignments.length} งาน</span>
+            </div>
+          </div>
+          <GradeTag xp={effXP} big={true}/>
+        </div>
+        <div style={{marginTop:20}}>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:8}}>PROGRESS TO VICTORY</div>
+          <ProgressFlag xp={effXP}/>
+          <div style={{marginTop:12}}><XPBar xp={effXP}/></div>
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+        <Top3Card students={students} assignments={assignments}/>
+        <div>
+          <div className="card" style={{marginBottom:10,textAlign:"center",padding:14}}>
+            <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:6}}>YOUR XP</div>
+            <div className="cond" style={{fontSize:48,fontWeight:900,color:rank.color,lineHeight:1}}>{effXP.toLocaleString()}</div>
+            <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{xpToScore(effXP)} คะแนน จาก 2,500 XP (100 คะแนน)</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <div className="card" style={{textAlign:"center",padding:12}}><div style={{fontSize:22,marginBottom:4}}>📋</div><div className="cond" style={{fontSize:28,fontWeight:700,color:"var(--cyan)"}}>{submitted}</div><div style={{fontSize:11,color:"var(--muted)"}}>ส่งแล้ว</div></div>
+            <div className="card" style={{textAlign:"center",padding:12}}><div style={{fontSize:22,marginBottom:4}}>⏳</div><div className="cond" style={{fontSize:28,fontWeight:700,color:"var(--orange)"}}>{assignments.length-submitted}</div><div style={{fontSize:11,color:"var(--muted)"}}>ค้างส่ง</div></div>
+          </div>
+        </div>
+      </div>
+      <ScoreBreakdown student={student} assignments={assignments}/>
+      <GradeTable/>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// STUDENT: ASSIGNMENTS
+// ─────────────────────────────────────────────
+function xpToScore(xp){return Math.round((xp||0)/25);}
+
+// ── XP รวมที่ "ใช้จริง" สำหรับ Rank/แถบ XP/Leaderboard ──
+// ครอบเพดานตามสัดส่วนคะแนน 100: ก่อนกลางภาค 875(35คะแนน) + กลางภาค 375(15) + หลังกลางภาค 875(35) + ปลายภาค 375(15) = 2500
+// ต่างจาก student.xp (ยอดสะสมดิบ ไม่มีเพดาน) ซึ่งยังใช้เป็นฐานคำนวณ/ปรับแก้แยกต่างหาก
+function getEffectiveXP(student,assignments){
+  if(!student)return 0;
+  const before=(assignments||[]).filter((a:any)=>(a.phase||"before")==="before");
+  const after=(assignments||[]).filter((a:any)=>(a.phase||"before")==="after");
+  function earnedXP(list:any){return list.reduce((s:number,a:any)=>{const sub=student.submissions?.[a.id];return s+(sub?.graded?sub.xpEarned||0:0);},0);}
+  const logXP=(phase:string)=>(student.xpLog||[]).reduce((s:number,l:any)=>(l.phase||"before")===phase?s+(l.xp||0):s,0);
+  const beforeXP=Math.min(earnedXP(before)+logXP("before"),875);
+  const afterXP=Math.min(earnedXP(after)+logXP("after"),875);
+  const midXP=(student.midterm!==null&&student.midterm!==undefined)?Math.min(student.midterm*25,375):0;
+  const finalXP=(student.final!==null&&student.final!==undefined)?Math.min(student.final*25,375):0;
+  return beforeXP+midXP+afterXP+finalXP;
+}
+
+function StudentAssignments({student,students,assignments,setStudents,skipNextSave,refreshFromSheet}){
+  const [uploadModal,setUploadModal]=useState(null);
+  const [driveLink,setDriveLink]=useState("");
+  const [uploadTab,setUploadTab]=useState("file"); // "file" | "link"
+  const [pickedFile,setPickedFile]=useState<File|null>(null);
+  const [submitting,setSubmitting]=useState(false);
+  const [submitErr,setSubmitErr]=useState("");
+  const MAX_FILE_MB=8;
+  function openUpload(a){setUploadModal(a);setDriveLink("");setPickedFile(null);setUploadTab("file");setSubmitErr("");}
+
+  async function submitWork(){
+    if(!uploadModal||submitting)return;
+    if(uploadTab==="link"&&!driveLink.trim())return;
+    if(uploadTab==="file"&&!pickedFile)return;
+    if(pickedFile&&pickedFile.size>MAX_FILE_MB*1024*1024){
+      setSubmitErr(`ไฟล์ใหญ่เกินไป (สูงสุด ${MAX_FILE_MB}MB) ลองบีบอัดไฟล์หรือใช้ลิงก์ Google Drive แทน`);
+      return;
+    }
+    setSubmitting(true);setSubmitErr("");
+    const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
+    const assignmentId=uploadModal.id;
+    try{
+      if(uploadTab==="file"&&pickedFile){
+        const base64=await fileToBase64(pickedFile);
+        // อัปเดตหน้าจอทันที (ยังไม่รู้ลิงก์ไฟล์จริงจน sync กลับมา) เพื่อไม่ให้รอค้าง
+        skipNextSave();
+        setStudents(prev=>prev.map(s=>s.id===student.id?{...s,submissions:{...s.submissions,[assignmentId]:{file:"",submittedAt:today,xpEarned:0,maxXp:uploadModal.xp,graded:false,uploading:true}}}:s));
+        await gasSubmitAssignment({studentId:student.id,assignmentId,fileData:base64,fileName:pickedFile.name,mimeType:pickedFile.type});
+      } else {
+        skipNextSave();
+        setStudents(prev=>prev.map(s=>s.id===student.id?{...s,submissions:{...s.submissions,[assignmentId]:{file:driveLink,submittedAt:today,xpEarned:0,maxXp:uploadModal.xp,graded:false}}}:s));
+        await gasSubmitAssignment({studentId:student.id,assignmentId,driveLink});
+      }
+      setUploadModal(null);
+      setTimeout(()=>{refreshFromSheet();},1800); // รอเซิร์ฟเวอร์บันทึกเสร็จ แล้วดึงของจริงมาซิงก์ใส่หน้าจอ
+    }catch(e){
+      setSubmitErr("ส่งงานไม่สำเร็จ ลองใหม่อีกครั้ง");
+    }finally{
+      setSubmitting(false);
+    }
+  }
+
+  async function removeSubmission(id){
+    skipNextSave();
+    setStudents(prev=>prev.map(s=>{
+      if(s.id!==student.id)return s;
+      const sub=s.submissions[id];
+      const{[id]:_,...rest}=s.submissions;
+      // หักคะแนนเฉพาะที่ครูตรวจแล้วเท่านั้น
+      return{...s,xp:s.xp-(sub?.graded?sub.xpEarned||0:0),submissions:rest};
+    }));
+    await gasRemoveSubmission({studentId:student.id,assignmentId:id});
+    setTimeout(()=>{refreshFromSheet();},1500);
+  }
+  function replaceFile(id){removeSubmission(id);const a=assignments.find(x=>x.id===id);if(a)setTimeout(()=>openUpload(a),50);}
+
+  // ── รวมภาระงาน + กิจกรรมในห้องเรียน แล้วแบ่งกลุ่มตามแท็กก่อน/หลังกลางภาค ──
+  const chOf=(id)=>CHAPTERS.find(c=>c.id===id)||CHAPTERS[0];
+  const taskItems=assignments.map(a=>({
+    kind:"task",key:a.id,a,ch:chOf(a.chapterId),
+    phase:a.phase||"before",
+    sub:student.submissions?.[a.id],
+    tm:TYPE_META[a.type]||{}
+  }));
+  const allActNames=[...new Set((students||[]).flatMap((st:any)=>(st.xpLog||[]).map((l:any)=>l.activity)))];
+  const actItems=allActNames.map((actName:any)=>{
+    const allEntries=(students||[]).flatMap((st:any)=>(st.xpLog||[]).filter((l:any)=>l.activity===actName));
+    // ใช้ maxXp ที่ครูตั้งไว้จริง ถ้ามี ไม่งั้น fallback เป็นค่าสูงสุดที่เคยให้ (รองรับข้อมูลเก่าก่อนมีฟิลด์นี้)
+    const fullXp=allEntries.reduce((m:number,l:any)=>Math.max(m,l.maxXp||l.xp||0),0);
+    const phase=allEntries[0]?.phase||"before";
+    const chapterId=allEntries[0]?.chapterId||"CH1";
+    const myLog=(student.xpLog||[]).find((l:any)=>l.activity===actName);
+    return{kind:"activity",key:"act_"+actName,actName,fullXp,phase,ch:chOf(chapterId),myLog};
+  });
+  // เรียงตามบทเรียน 1→2→3→4 (ตัดผ่านทั้งภาระงานและกิจกรรมในกลุ่มเดียวกัน)
+  const chOrder=(id)=>{const i=CHAPTERS.findIndex(c=>c.id===id);return i===-1?999:i;};
+  const allItems=[...taskItems,...actItems].sort((x:any,y:any)=>chOrder(x.ch.id)-chOrder(y.ch.id));
+  const groups=[
+    {phase:"before",label:"ก่อนกลางภาค",dot:"#a78bfa",tint:"rgba(167,139,250,.15)",text:"#a78bfa"},
+    {phase:"after", label:"หลังกลางภาค",dot:"#f472b6",tint:"rgba(244,114,182,.15)",text:"#f472b6"},
+  ];
+
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+      {uploadModal&&(
+        <div className="overlay">
+          <div className="card card-cyan" style={{width:"100%",maxWidth:480}}>
+            <div className="cond" style={{fontSize:22,color:"var(--cyan)",letterSpacing:2,marginBottom:4}}>📎 ส่งงาน</div>
+            <div style={{color:"var(--muted2)",fontSize:13,marginBottom:16}}>{uploadModal.title} <span style={{color:"var(--muted)"}}>(เต็ม {uploadModal.xp} XP / {xpToScore(uploadModal.xp)} คะแนน)</span></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginBottom:16,background:"rgba(18,32,52,.8)",borderRadius:6,padding:4}}>
+              {[["file","📎 แนบไฟล์"],["link","🔗 วางลิงก์"]].map(([t,l])=>(
+                <button key={t} onClick={()=>{setUploadTab(t);setSubmitErr("");}} className="btn"
+                  style={{background:uploadTab===t?"var(--bg3)":"transparent",
+                    border:uploadTab===t?"1px solid rgba(78,202,174,.4)":"1px solid transparent",
+                    color:uploadTab===t?"var(--cyan)":"var(--muted)",padding:"9px",borderRadius:4,fontSize:13}}>{l}</button>
+              ))}
+            </div>
+            {uploadTab==="file"?(
+              <div style={{marginBottom:14}}>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>📎 เลือกไฟล์ PDF หรือรูปภาพ</label>
+                <input type="file" accept=".pdf,image/*" onChange={e=>{setPickedFile(e.target.files?.[0]||null);setSubmitErr("");}}
+                  style={{width:"100%",fontSize:13,color:"var(--muted2)"}}/>
+                {pickedFile&&<div style={{fontSize:12,color:"var(--green)",marginTop:8}}>✓ เลือกแล้ว: {pickedFile.name} ({(pickedFile.size/1024/1024).toFixed(2)} MB)</div>}
+                <div style={{fontSize:11,color:"var(--muted)",marginTop:6}}>📌 รองรับไฟล์ PDF และรูปภาพ ขนาดไม่เกิน {MAX_FILE_MB}MB</div>
+              </div>
+            ):(
+              <div style={{marginBottom:14}}>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>🔗 ลิงก์ Google Drive</label>
+                <input className="input" value={driveLink} onChange={e=>setDriveLink(e.target.value)}
+                  placeholder="https://drive.google.com/..."/>
+                <div style={{fontSize:11,color:"var(--muted)",marginTop:6}}>
+                  💡 เปิด Drive → อัปโหลดไฟล์ → คลิกขวา → "Get link" → Copy มาวางที่นี่
+                </div>
+              </div>
+            )}
+            {submitErr&&<div style={{background:"rgba(232,96,96,.14)",border:"1px solid rgba(232,96,96,.4)",borderRadius:5,padding:"9px 14px",color:"var(--red)",fontSize:13,marginBottom:12}}>{submitErr}</div>}
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-cyan" onClick={submitWork}
+                disabled={submitting||(uploadTab==="link"?!driveLink.trim():!pickedFile)}
+                style={{flex:1,opacity:(submitting||(uploadTab==="link"?!driveLink.trim():!pickedFile))?.4:1}}>
+                {submitting?"⏳ กำลังส่ง...":"✅ ส่งงาน"}
+              </button>
+              <button className="btn-outline" onClick={()=>setUploadModal(null)} style={{flex:1}} disabled={submitting}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>MISSION BOARD — {assignments.length} OBJECTIVES</div>
+      {groups.map(g=>{
+        const items=allItems.filter((it:any)=>it.phase===g.phase);
+        if(items.length===0)return null;
+        return(
+          <div key={g.phase} style={{marginBottom:32}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,paddingBottom:10,borderBottom:`2px solid ${g.dot}50`}}>
+              <span style={{width:12,height:12,borderRadius:3,background:g.dot,display:"inline-block"}}></span>
+              <div className="cond" style={{fontSize:22,fontWeight:700,color:g.text,letterSpacing:1}}>{g.label}</div>
+              <span className="badge" style={{background:g.tint,border:`1px solid ${g.dot}66`,color:g.text,fontSize:9}}>{items.length} รายการ</span>
+            </div>
+            {items.map((it:any)=>{
+              if(it.kind==="task"){
+                const a=it.a,sub=it.sub,tm=it.tm,ch=it.ch;
+                return(
+                  <div key={it.key} className="card" style={{display:"flex",gap:16,alignItems:"center",marginBottom:8,flexWrap:"wrap",
+                    borderColor:sub?`${ch.color}50`:"var(--border)",background:sub?`linear-gradient(135deg,var(--bg2),${ch.bg})`:"var(--bg2)"}}>
+                    <div style={{fontSize:28,flexShrink:0}}>{tm.icon||"📄"}</div>
+                    <div style={{flex:1,minWidth:200}}>
+                      <div style={{display:"flex",gap:8,marginBottom:6,flexWrap:"wrap"}}>
+                        <span className="badge" style={{background:`${ch.color}18`,border:`1px solid ${ch.color}45`,color:ch.color,fontSize:9,whiteSpace:"nowrap"}}>{ch.icon} {ch.label}</span>
+                        <span className="badge" style={{background:`${tm.color}20`,border:`1px solid ${tm.color}50`,color:tm.color,whiteSpace:"nowrap"}}>{tm.label}</span>
+                        {sub?<span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)",whiteSpace:"nowrap"}}>✓ ส่งแล้ว</span>
+                           :<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.3)",color:"var(--red)",whiteSpace:"nowrap"}}>⏳ ยังไม่ส่ง</span>}
+                      </div>
+                      <div style={{fontSize:14,fontWeight:600,color:"#fff",marginBottom:4}}>{a.title}</div>
+                      <div style={{fontSize:12,color:"var(--muted)",fontWeight:400,whiteSpace:"nowrap"}}>(เต็ม {a.xp} XP / {xpToScore(a.xp)} คะแนน)</div>
+                      <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{a.desc} · <span style={{whiteSpace:"nowrap"}}>ครบกำหนด {a.due}</span></div>
+                      {sub&&<div style={{fontSize:12,marginTop:4}}>
+                        {sub.uploading?<span style={{color:"#f0a0c0"}}>⏳ กำลังอัปโหลดไฟล์...</span>:
+                          <a href={sub.file} target="_blank" rel="noreferrer" style={{color:"var(--cyan)"}}>🔗 ดูไฟล์งาน</a>}
+                        <span style={{color:"var(--muted)",whiteSpace:"nowrap"}}> · {sub.submittedAt}</span>
+                        {!sub.uploading&&<span style={{marginLeft:8,color:sub.graded?"#f0a0c0":"var(--muted)",fontFamily:"'Share Tech Mono',monospace",fontSize:11,whiteSpace:"nowrap"}}>
+                          {sub.graded?`${sub.xpEarned} XP (${xpToScore(sub.xpEarned)} คะแนน)`:"⏳ รอครูตรวจ"}
+                        </span>}
+                      </div>}
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
+                      {!sub&&<button className="btn btn-cyan" onClick={()=>openUpload(a)} style={{padding:"8px 14px",fontSize:12,whiteSpace:"nowrap"}}>📎 ส่งงาน</button>}
+                      {sub&&!sub.uploading&&<button className="btn-ghost" onClick={()=>replaceFile(a.id)} style={{fontSize:11,whiteSpace:"nowrap"}}>🔄 เปลี่ยน</button>}
+                      {sub&&!sub.uploading&&<button className="btn btn-red" onClick={()=>removeSubmission(a.id)} style={{padding:"6px 12px",fontSize:11,whiteSpace:"nowrap"}}>🗑 ลบ</button>}
+                    </div>
+                  </div>
+                );
+              }
+              const{actName,fullXp,ch,myLog}=it;
+              return(
+                <div key={it.key} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,
+                  borderColor:myLog?"rgba(170,143,240,.3)":"var(--border)",
+                  background:myLog?"var(--bg2)":"rgba(232,96,96,.04)"}}>
+                  <div style={{fontSize:26,flexShrink:0}}>🏫</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",gap:8,marginBottom:6,flexWrap:"wrap"}}>
+                      <span className="badge" style={{background:`${ch.color}18`,border:`1px solid ${ch.color}45`,color:ch.color,fontSize:9}}>{ch.icon} {ch.label}</span>
+                      <span className="badge" style={{background:"rgba(170,143,240,.2)",border:"1px solid rgba(170,143,240,.4)",color:"#aa8ff0",fontSize:9}}>กิจกรรม</span>
+                      {myLog?<span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ ส่งแล้ว</span>
+                            :<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.3)",color:"var(--red)"}}>⏳ ยังไม่ส่ง</span>}
+                    </div>
+                    <div style={{fontSize:14,fontWeight:600,color:myLog?"#fff":"#f5b8b8",marginBottom:4}}>{actName} <span style={{fontSize:12,color:"var(--muted)",fontWeight:400}}>(เต็ม {fullXp} XP / {xpToScore(fullXp)} คะแนน)</span></div>
+                    {myLog
+                      ?<div style={{fontSize:12,marginTop:4}}>
+                          <span style={{color:"var(--muted)"}}>{myLog.date}</span>
+                          <span style={{marginLeft:8,color:"#f0a0c0",fontFamily:"'Share Tech Mono',monospace",fontSize:11}}>{myLog.xp} XP ({xpToScore(myLog.xp)} คะแนน)</span>
+                        </div>
+                      :<div style={{fontSize:11,color:"var(--red)",marginTop:2}}>กรุณาติดต่อครู</div>
+                    }
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────
+function StudentResources({resources}){
+  const ti={pdf:"📄",ppt:"📊",doc:"📝",img:"🖼️",zip:"📦",link:"🔗"};
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>📚 บทเรียนและสไลด์</div>
+      {CHAPTERS.map(ch=>{const chR=resources.filter(r=>r.chapterId===ch.id);return(
+        <div key={ch.id} style={{marginBottom:24}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${ch.color}35`}}>
+            <span style={{fontSize:20}}>{ch.icon}</span>
+            <div className="cond" style={{fontSize:20,fontWeight:700,color:ch.color}}>{ch.title}</div>
+            <span className="badge" style={{background:`${ch.color}20`,border:`1px solid ${ch.color}50`,color:ch.color}}>{chR.length} ไฟล์</span>
+          </div>
+          {chR.length===0&&<div style={{color:"var(--muted)",fontSize:13,padding:"10px 0"}}>ยังไม่มีไฟล์ในบทนี้</div>}
+          {chR.map(r=>(
+            <div key={r.id} className="card card-hover" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:`${ch.color}25`}}>
+              <div style={{fontSize:28}}>{ti[r.type]||"📄"}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{r.title}</div>
+                <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{r.uploadedAt}</div>
+              </div>
+              {r.link
+                ?<a href={r.link} target="_blank" rel="noreferrer" className="btn btn-cyan" style={{padding:"8px 18px",fontSize:13,textDecoration:"none"}}>📂 เปิดไฟล์</a>
+                :<span style={{fontSize:12,color:"var(--muted)"}}>ไม่มีลิงก์</span>
+              }
+            </div>
+          ))}
+        </div>
+      );})}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// STUDENT: RANKING — เห็นแค่ TOP 3
+// ─────────────────────────────────────────────
+function RankingPage({students,myId,isTeacher=false,assignments}){
+  const eff=(s:any)=>getEffectiveXP(s,assignments);
+  const sorted=[...students].sort((a,b)=>eff(b)-eff(a));
+  const medals=["🥇","🥈","🥉"],mc=["#f5cc70","#c8c8c8","#cd7f32"];
+  const myRank=sorted.findIndex(s=>s.id===myId)+1;
+  const mySelf=sorted.find(s=>s.id===myId);
+
+  // นักเรียนเห็นแค่ top3 + ตัวเอง
+  if(!isTeacher){
+    const top3=sorted.slice(0,3);
+    return(
+      <div className="fade-up" style={{padding:20,maxWidth:700,margin:"0 auto"}}>
+        <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>🏆 TOP 3 LEADERBOARD</div>
+        {top3.map((s,i)=>{const sxp=eff(s);const r=getRank(sxp);const isMe=s.id===myId;return(
+          <div key={s.id} className="card slide-r" style={{display:"flex",alignItems:"center",gap:14,marginBottom:12,flexWrap:"wrap",
+            borderColor:isMe?"rgba(232,188,85,.6)":i===0?"rgba(232,188,85,.28)":"var(--border)",
+            background:isMe?"rgba(232,188,85,.07)":"var(--bg2)",animationDelay:`${i*.1}s`,
+            boxShadow:i===0?"0 0 24px rgba(232,188,85,.12)":"none"}}>
+            <div style={{width:40,textAlign:"center",flexShrink:0}}><span style={{fontSize:30}}>{medals[i]}</span></div>
+            <div style={{fontSize:36,flexShrink:0}}>{s.avatar}</div>
+            <div style={{flex:1,minWidth:140}}>
+              <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+                <span style={{fontSize:16,fontWeight:600,color:isMe?"#f0a0c0":"#fff",whiteSpace:"nowrap"}}>{s.name}</span>
+                {isMe&&<span className="badge" style={{background:"rgba(232,188,85,.18)",border:"1px solid rgba(232,188,85,.45)",color:"#f0a0c0"}}>YOU</span>}
+              </div>
+              <div style={{maxWidth:280}}><XPBar xp={sxp} showLabel={false}/></div>
+            </div>
+            <div style={{textAlign:"center",flexShrink:0}}>
+              <div className="cond" style={{fontSize:28,fontWeight:900,color:mc[i],whiteSpace:"nowrap"}}>{sxp.toLocaleString()}</div>
+              <div style={{fontSize:10,color:"var(--muted)",whiteSpace:"nowrap"}}>XP ({xpToScore(sxp)} คะแนน)</div>
+              <GradeTag xp={sxp}/>
+            </div>
+          </div>
+        );})}
+
+        {/* ถ้าตัวเองไม่ได้ top3 แสดงอันดับตัวเอง */}
+        {myId&&myRank>3&&mySelf&&(
+          <div style={{marginTop:16}}>
+            <div style={{height:1,background:"var(--border)",marginBottom:16}}/>
+            <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:10}}>อันดับของคุณ</div>
+            <div className="card" style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",
+              borderColor:"rgba(232,188,85,.5)",background:"rgba(232,188,85,.06)"}}>
+              <div style={{width:40,textAlign:"center",flexShrink:0}}>
+                <span className="mono" style={{fontSize:22,color:"var(--muted)"}}>#{myRank}</span>
+              </div>
+              <div style={{fontSize:36,flexShrink:0}}>{mySelf.avatar}</div>
+              <div style={{flex:1,minWidth:140}}>
+                <div style={{fontSize:16,fontWeight:600,color:"#f0a0c0",marginBottom:6,whiteSpace:"nowrap"}}>{mySelf.name}</div>
+                <div style={{maxWidth:280}}><XPBar xp={eff(mySelf)} showLabel={false}/></div>
+              </div>
+              <div style={{textAlign:"center",flexShrink:0}}>
+                <div className="cond" style={{fontSize:26,fontWeight:900,color:"#f0a0c0",whiteSpace:"nowrap"}}>{eff(mySelf).toLocaleString()}</div>
+                <div style={{fontSize:10,color:"var(--muted)",whiteSpace:"nowrap"}}>XP ({xpToScore(eff(mySelf))} คะแนน)</div>
+                <GradeTag xp={eff(mySelf)}/>
+              </div>
+            </div>
+            <div style={{textAlign:"center",marginTop:12,fontSize:13,color:"var(--muted)"}}>
+              ห่างจากอันดับ 3 อีก <span style={{color:"#f0a0c0",fontWeight:700}}>{(eff(sorted[2])||0)-eff(mySelf)} XP</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ครูเห็นทั้งหมด
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>FULL LEADERBOARD</div>
+      {sorted.map((s,i)=>{const sxp=eff(s);const r=getRank(sxp);return(
+        <div key={s.id} className="card slide-r" style={{display:"flex",alignItems:"center",gap:14,marginBottom:10,flexWrap:"wrap",
+          borderColor:i===0?"rgba(232,188,85,.28)":"var(--border)",animationDelay:`${i*.04}s`}}>
+          <div style={{width:36,textAlign:"center",flexShrink:0}}>{i<3?<span style={{fontSize:24}}>{medals[i]}</span>:<span className="mono" style={{fontSize:18,color:"var(--muted)"}}>#{i+1}</span>}</div>
+          <div style={{fontSize:32,flexShrink:0}}>{s.avatar}</div>
+          <div style={{flex:1,minWidth:140}}>
+            <div style={{fontSize:15,fontWeight:600,color:"#fff",marginBottom:6,whiteSpace:"nowrap"}}>{s.name}</div>
+            <div style={{maxWidth:300}}><XPBar xp={sxp} showLabel={false}/></div>
+          </div>
+          <div style={{textAlign:"center",flexShrink:0}}>
+            <div className="cond" style={{fontSize:26,fontWeight:900,color:r.color,whiteSpace:"nowrap"}}>{sxp.toLocaleString()}</div>
+            <div style={{fontSize:10,color:"var(--muted)",whiteSpace:"nowrap"}}>XP ({xpToScore(sxp)} คะแนน)</div>
+            <GradeTag xp={sxp}/>
+          </div>
+        </div>
+      );})}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// STUDENT: INVENTORY
+// ─────────────────────────────────────────────
+function StudentInventory({student}){
+  const rb={LEGENDARY:"rgba(240,192,96,.1)",EPIC:"rgba(155,127,232,.1)",RARE:"rgba(78,202,174,.1)",UNCOMMON:"rgba(125,232,160,.07)",CUSTOM:"rgba(232,140,74,.1)",COMMON:"rgba(100,100,100,.07)"};
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>AIRDROP INVENTORY — {student.inventory.length} ITEMS</div>
+      {student.inventory.length===0
+        ?<div className="card" style={{textAlign:"center",padding:60}}><div style={{fontSize:48,marginBottom:12}}>📦</div><div className="cond" style={{fontSize:20,color:"var(--muted)"}}>ยังไม่มีรางวัล</div><div style={{fontSize:13,color:"var(--muted)",marginTop:8}}>รอครูส่ง Airdrop!</div></div>
+        :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:16}}>
+          {student.inventory.map((item,idx)=>(
+            <div key={idx} className="card" style={{textAlign:"center",borderColor:`${item.color}50`,background:rb[item.rarity]}}>
+              <div style={{fontSize:52,marginBottom:10,filter:`drop-shadow(0 0 16px ${item.color}70)`}}>{item.icon}</div>
+              <div style={{color:item.color,fontWeight:600,fontSize:14,marginBottom:6}}>{item.name}</div>
+              <div className="badge" style={{background:`${item.color}20`,border:`1px solid ${item.color}50`,color:item.color,marginBottom:10}}>★ {item.rarity}</div>
+              {item.note&&<div style={{fontSize:12,color:"var(--muted2)",fontStyle:"italic",marginTop:4}}>"{item.note}"</div>}
+              <div className="mono" style={{fontSize:10,color:"var(--muted)",marginTop:8}}>{item.receivedAt}</div>
+            </div>
+          ))}
+        </div>}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// STUDENT: SETTINGS
+// ─────────────────────────────────────────────
+function StudentSettings({student,setStudents}){
+  const [oldPw,setOldPw]=useState("");const [newPw,setNewPw]=useState("");const [cnf,setCnf]=useState("");const [msg,setMsg]=useState(null);
+  function change(){
+    if(oldPw!==student.password){setMsg({t:"err",text:"รหัสผ่านเดิมไม่ถูกต้อง"});return;}
+    if(newPw.length<4){setMsg({t:"err",text:"รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัว"});return;}
+    if(newPw!==cnf){setMsg({t:"err",text:"รหัสผ่านใหม่ไม่ตรงกัน"});return;}
+    setStudents(prev=>prev.map(s=>s.id===student.id?{...s,password:newPw}:s));
+    setMsg({t:"ok",text:"เปลี่ยนรหัสผ่านสำเร็จ! ✅"});setOldPw("");setNewPw("");setCnf("");
+  }
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:480,margin:"0 auto"}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>ACCOUNT SETTINGS</div>
+      <div className="card">
+        <div className="cond" style={{fontSize:20,color:"#f0a0c0",letterSpacing:2,marginBottom:20}}>🔐 เปลี่ยนรหัสผ่าน</div>
+        {([["รหัสผ่านเดิม",oldPw,setOldPw],["รหัสผ่านใหม่",newPw,setNewPw],["ยืนยันรหัสผ่านใหม่",cnf,setCnf]] as [string,string,any][]).map(([l,v,s])=>(
+          <div key={l} style={{marginBottom:14}}><label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>{l.toUpperCase()}</label><input className="input" type="password" value={v} onChange={e=>s(e.target.value)} placeholder="••••••••"/></div>
+        ))}
+        {msg&&<div style={{background:msg.t==="ok"?"rgba(94,200,126,.14)":"rgba(232,96,96,.14)",border:`1px solid ${msg.t==="ok"?"rgba(94,200,126,.45)":"rgba(232,96,96,.45)"}`,borderRadius:5,padding:"9px 14px",color:msg.t==="ok"?"var(--green)":"var(--red)",fontSize:13,marginBottom:12}}>{msg.text}</div>}
+        <button className="btn btn-gold" onClick={change} style={{width:"100%"}}>💾 บันทึกรหัสผ่านใหม่</button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TEACHER: EXAM SCORES
+// ─────────────────────────────────────────────
+function TeacherExamScores({students,setStudents}){
+  const [midScores,setMidScores]=useState(()=>{const m={};students.forEach(s=>{m[s.id]=s.midterm!==null&&s.midterm!==undefined?String(s.midterm):"";});return m;});
+  const [finalScores,setFinalScores]=useState(()=>{const m={};students.forEach(s=>{m[s.id]=s.final!==null&&s.final!==undefined?String(s.final):"";});return m;});
+  const [saved,setSaved]=useState(false);
+  function saveAll(){
+    setStudents(prev=>prev.map(s=>({...s,
+      midterm:midScores[s.id]!==""?Number(midScores[s.id]):null,
+      final:finalScores[s.id]!==""?Number(finalScores[s.id]):null,
+    })));
+    setSaved(true);setTimeout(()=>setSaved(false),3000);
+  }
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:800,margin:"0 auto"}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:20}}>📝 ประกาศคะแนนสอบ</div>
+      {saved&&<div style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",borderRadius:8,padding:"12px 18px",color:"var(--green)",fontSize:14,marginBottom:16,textAlign:"center"}}>✅ บันทึกแล้ว — คะแนนแสดงในหน้านักเรียนทันที!</div>}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16,marginBottom:16}}>
+        <div className="card" style={{borderColor:"rgba(147,197,253,.55)"}}>
+          <div className="cond" style={{fontSize:18,color:"#93c5fd",letterSpacing:2,marginBottom:4}}>🔵 สอบกลางภาค</div>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",marginBottom:14}}>คะแนนเต็ม 15 คะแนน (375 XP)</div>
+          {students.map(s=>(
+            <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid var(--border)"}}>
+              <span style={{fontSize:20,flexShrink:0}}>{s.avatar}</span>
+              <span style={{flex:1,fontSize:13,color:"var(--text)"}}>{s.name}</span>
+              <input type="number" min="0" max="15" value={midScores[s.id]||""} placeholder="—"
+                onChange={e=>setMidScores(p=>({...p,[s.id]:e.target.value}))}
+                style={{width:60,background:"rgba(14,26,43,.8)",border:"1px solid var(--border2)",color:"#93c5fd",borderRadius:5,padding:"6px 8px",fontFamily:"'Share Tech Mono',monospace",fontSize:15,textAlign:"center",outline:"none"}}/>
+              <span style={{fontSize:11,color:"var(--muted)",flexShrink:0,width:64}}>/15 ({midScores[s.id]?Number(midScores[s.id])*25:0} XP)</span>
+            </div>
+          ))}
+        </div>
+        <div className="card" style={{borderColor:"rgba(253,230,138,.55)"}}>
+          <div className="cond" style={{fontSize:18,color:"#fde68a",letterSpacing:2,marginBottom:4}}>🟡 สอบปลายภาค</div>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",marginBottom:14}}>คะแนนเต็ม 15 คะแนน (375 XP)</div>
+          {students.map(s=>(
+            <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid var(--border)"}}>
+              <span style={{fontSize:20,flexShrink:0}}>{s.avatar}</span>
+              <span style={{flex:1,fontSize:13,color:"var(--text)"}}>{s.name}</span>
+              <input type="number" min="0" max="15" value={finalScores[s.id]||""} placeholder="—"
+                onChange={e=>setFinalScores(p=>({...p,[s.id]:e.target.value}))}
+                style={{width:60,background:"rgba(14,26,43,.8)",border:"1px solid var(--border2)",color:"#fde68a",borderRadius:5,padding:"6px 8px",fontFamily:"'Share Tech Mono',monospace",fontSize:15,textAlign:"center",outline:"none"}}/>
+              <span style={{fontSize:11,color:"var(--muted)",flexShrink:0,width:64}}>/15 ({finalScores[s.id]?Number(finalScores[s.id])*25:0} XP)</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <button className="btn btn-gold" onClick={saveAll} style={{width:"100%",padding:16,fontSize:17,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+        💾 บันทึกและประกาศคะแนน
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// GRADE CHART
+// ─────────────────────────────────────────────
+function useChartJS(){
+  useEffect(()=>{
+    if(typeof Chart!=="undefined")return;
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
+    document.head.appendChild(s);
+  },[]);
+}
+
+function GradeChart({students,assignments}){
+  useChartJS();
+  const chartRef=useRef<any>(null),pieRef=useRef(null);
+  const barInst=useRef<any>(null),pieInst=useRef(null);
+  const gradeMap={"4":0,"3.5":0,"3":0,"2.5":0,"2":0,"1.5":0,"1":0,"0":0};
+  students.forEach(s=>{const r=getRank(getEffectiveXP(s,assignments));if(r.grade in gradeMap)gradeMap[r.grade]++;});
+  const labels=Object.keys(gradeMap),data=Object.values(gradeMap);
+  const colors=["#a78bfa","#818cf8","#60a5fa","#f472b6","#34d399","#fbbf24","#fb923c","#f87171"];
+  const total=students.length;
+  const passing=students.filter(s=>getRank(getEffectiveXP(s,assignments)).grade!=="0").length;
+  useEffect(()=>{
+    if(typeof Chart==="undefined"||!chartRef.current)return;
+    if(barInst.current)barInst.current.destroy();
+    if(pieInst.current)pieInst.current.destroy();
+    Chart.defaults.color="#9aacbf";
+    barInst.current=new Chart(chartRef.current,{
+      type:"bar",data:{labels,datasets:[{label:"จำนวน",data,backgroundColor:colors,borderRadius:6}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:"rgba(232,188,85,.08)"}},x:{grid:{display:false}}}}
+    });
+    const nz=labels.map((l,i)=>({l,d:data[i],c:colors[i]})).filter(x=>x.d>0);
+    pieInst.current=new Chart(pieRef.current,{
+      type:"doughnut",data:{labels:nz.map(x=>"เกรด "+x.l),datasets:[{data:nz.map(x=>x.d),backgroundColor:nz.map(x=>x.c),borderWidth:3,borderColor:"rgba(10,20,38,.9)"}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+    });
+  },[students]);
+  return(
+    <div className="card card-gold" style={{marginBottom:16}}>
+      <div className="cond" style={{fontSize:20,color:"#f0a0c0",letterSpacing:2,marginBottom:12}}>📊 สรุปผลการเรียนทั้งห้อง</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(90px,1fr))",gap:10,marginBottom:14}}>
+        {[{label:"นักเรียน",val:total,color:"var(--cyan)"},{label:"ผ่านเกณฑ์",val:passing,color:"var(--green)"},{label:"ไม่ผ่าน",val:total-passing,color:"var(--red)"}].map((s,i)=>(
+          <div key={i} className="card" style={{textAlign:"center",padding:12,borderColor:`${s.color}38`}}>
+            <div style={{fontSize:22,fontWeight:700,color:s.color}}>{s.val}</div>
+            <div style={{fontSize:11,color:"var(--muted)",marginTop:3}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:20}}>
+        <div style={{position:"relative",height:200}}><canvas ref={chartRef}/></div>
+        <div style={{position:"relative",height:200}}><canvas ref={pieRef}/></div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TEACHER: OVERVIEW
+// ─────────────────────────────────────────────
+function TeacherOverview({students,assignments,setPage,maxXp,onEditMaxXp}:any){
+  const avgXP=Math.round(students.reduce((a,s)=>a+getEffectiveXP(s,assignments),0)/students.length);
+  const passing=students.filter(s=>parseFloat(getRank(getEffectiveXP(s,assignments)).grade)>0).length;
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:1000,margin:"0 auto"}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:16}}>COMMANDER OVERVIEW</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12,marginBottom:20}}>
+        {[{icon:"👥",label:"นักเรียน",val:students.length,color:"var(--cyan)"},{icon:"✅",label:"ผ่านเกณฑ์",val:passing,color:"var(--green)"},{icon:"❌",label:"ไม่ผ่าน",val:students.length-passing,color:"var(--red)"},{icon:"⭐",label:"XP เฉลี่ย",val:avgXP.toLocaleString(),color:"#f0a0c0"},{icon:"📋",label:"งาน",val:assignments.length,color:"var(--purple)"}].map((s,i)=>(
+          <div key={i} className="card" style={{textAlign:"center",borderColor:`${s.color}38`}}>
+            <div style={{fontSize:24,marginBottom:4}}>{s.icon}</div>
+            <div className="cond" style={{fontSize:34,fontWeight:900,color:s.color}}>{s.val}</div>
+            <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+      {/* XP เต็มทั้งเทอม */}
+      <div className="card" style={{marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",borderColor:"rgba(232,188,85,.5)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <span style={{fontSize:28}}>⚙️</span>
+          <div>
+            <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2}}>XP เต็มทั้งเทอม</div>
+            <div className="cond" style={{fontSize:28,fontWeight:900,color:"#f0a0c0"}}>{(maxXp||2500).toLocaleString()} <span style={{fontSize:14,color:"var(--muted)"}}>XP</span></div>
+          </div>
+        </div>
+        <button className="btn-ghost" onClick={onEditMaxXp} style={{fontSize:13,padding:"9px 18px",borderColor:"rgba(232,188,85,.4)",color:"#f0a0c0"}}>✏️ แก้ไข</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12,marginBottom:20}}>
+        {[
+          {page:"t-assignments",icon:"📋",title:"เพิ่ม / จัดการงาน",color:"var(--cyan)",btn:"➕ เพิ่มงานใหม่"},
+          {page:"t-resources",  icon:"📁",title:"อัปโหลดไฟล์ความรู้",color:"#f0a0c0",btn:"⬆ อัปโหลดไฟล์"},
+          {page:"t-scores",     icon:"⭐",title:"จัดการ XP / คะแนน",color:"#82e0aa",btn:"✏️ แก้ไข XP"},
+          {page:"t-airdrop",    icon:"📦",title:"ส่ง Airdrop รางวัล",color:"var(--purple)",btn:"🎲 Roll Airdrop"},
+        ].map(a=>(
+          <div key={a.page} className="card card-hover" onClick={()=>setPage(a.page)}
+            style={{borderColor:`${a.color}38`}}>
+            <div style={{display:"flex",gap:14,alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:36}}>{a.icon}</div>
+              <div className="cond" style={{fontSize:20,fontWeight:700,color:a.color}}>{a.title}</div>
+            </div>
+            <button className="btn btn-cyan" style={{width:"100%",padding:10,fontSize:14,
+              background:`linear-gradient(135deg,${a.color}22,${a.color}44)`,
+              border:`1px solid ${a.color}66`,color:a.color}}
+              onClick={e=>{e.stopPropagation();setPage(a.page);}}>
+              {a.btn}
+            </button>
+          </div>
+        ))}
+      </div>
+      <GradeChart students={students} assignments={assignments}/>
+      <Top3Card students={students} assignments={assignments}/>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TEACHER: STUDENTS
+// ─────────────────────────────────────────────
+function TeacherStudents({students,assignments,setStudents}){
+  const [sel,setSel]=useState(null);
+  useEffect(()=>{window.scrollTo(0,0);},[sel]);
+  const [editXpModal,setEditXpModal]=useState(false);
+  const [newXp,setNewXp]=useState("");
+  const [xpMsg,setXpMsg]=useState(null);
+  const [editSubModal,setEditSubModal]=useState<any>(null); // {assignmentId, xpEarned, maxXp}
+  const [editLogModal,setEditLogModal]=useState<any>(null); // {idx, xp, activity}
+  const s=sel?students.find(x=>x.id===sel):null;
+  function removeAirdrop(studentId,idx){
+    setStudents(prev=>{
+      const updated=prev.map(s=>s.id===studentId?{...s,inventory:s.inventory.filter((_,i)=>i!==idx)}:s);
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+  }
+  function saveEditXp(){
+    if(!s)return;
+    const val=Number(newXp);
+    if(isNaN(val)||val<0){setXpMsg({t:"err",text:"กรุณาใส่ตัวเลขที่ถูกต้อง"});return;}
+    if(!window.confirm(`แก้ไข XP ของ ${s.name} จาก ${s.xp} → ${val}?`))return;
+    setStudents((prev:any)=>{
+      const updated=prev.map((st:any)=>st.id===s.id?{...st,xp:val}:st);
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+    setXpMsg({t:"ok",text:`✅ แก้ไข XP เป็น ${val} แล้ว`});
+    setTimeout(()=>{setEditXpModal(false);setXpMsg(null);setNewXp("");},1500);
+  }
+
+  function calcCorrectXp(st:any){
+    const fromSubs=Object.values(st.submissions||{}).reduce((sum:number,sub:any)=>
+      sum+(sub?.graded?(sub.xpEarned||0):0),0);
+    const fromLog=(st.xpLog||[]).reduce((sum:number,l:any)=>sum+(l.xp||0),0);
+    return fromSubs+fromLog;
+  }
+
+  function recalcXp(targetStu:any){
+    const correct=calcCorrectXp(targetStu);
+    const fromSubs=Object.values(targetStu.submissions||{}).reduce((sum:number,sub:any)=>
+      sum+(sub?.graded?(sub.xpEarned||0):0),0);
+    const fromLog=(targetStu.xpLog||[]).reduce((sum:number,l:any)=>sum+(l.xp||0),0);
+    const diff=correct-targetStu.xp;
+    if(diff===0){alert(`✅ XP ของ ${targetStu.name} ถูกต้องอยู่แล้ว (${correct} XP)`);return;}
+    if(!window.confirm(
+      `คำนวณ XP ใหม่ของ ${targetStu.name}
+
+`+
+      `งานส่ง (ตรวจแล้ว): ${fromSubs} XP
+`+
+      `กิจกรรม (xpLog): ${fromLog} XP
+`+
+      `รวมใหม่: ${correct} XP
+
+`+
+      `XP ปัจจุบัน: ${targetStu.xp} XP (ต่าง ${diff>0?"+":""}${diff})
+
+`+
+      `ยืนยันปรับ?`
+    ))return;
+    setStudents((prev:any)=>{
+      const updated=prev.map((st:any)=>st.id===targetStu.id?{...st,xp:correct}:st);
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+  }
+
+  function recalcAllXp(){
+    const preview=(students as any[]).map(st=>{
+      const correct=calcCorrectXp(st);
+      return{id:st.id,name:st.name,old:st.xp,correct,diff:correct-st.xp};
+    });
+    const changed=preview.filter(s=>s.diff!==0);
+    if(changed.length===0){alert("✅ XP ทุกคนถูกต้องอยู่แล้ว!");return;}
+    const msg=changed.map(s=>"• "+s.name+": "+s.old+" → "+s.correct+" ("+(s.diff>0?"+":"")+s.diff+")").join(", ");
+    if(!window.confirm("คำนวณ XP ใหม่ทั้งห้อง รายการที่เปลี่ยน: "+msg+" ยืนยัน?"))return;
+    setStudents((prev:any)=>{
+      const updated=prev.map((st:any)=>({...st,xp:calcCorrectXp(st)}));
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+  }
+
+  // แก้ไข submission XP + maxXp
+  function saveEditSub(){
+    if(!s||!editSubModal)return;
+    const{assignmentId,xpEarned,maxXp}=editSubModal;
+    const newXpEarned=Number(xpEarned);
+    const newMaxXp=Number(maxXp);
+    if(isNaN(newXpEarned)||newXpEarned<0){return;}
+    const sub=s.submissions?.[assignmentId];
+    if(!sub)return;
+    const oldXp=sub.graded?(sub.xpEarned||0):0;
+    const diff=newXpEarned-oldXp;
+    setStudents((prev:any)=>{
+      const updated=prev.map((st:any)=>st.id===s.id?{
+        ...st,
+        xp:st.xp+diff,
+        submissions:{...st.submissions,[assignmentId]:{...sub,xpEarned:newXpEarned,maxXp:newMaxXp,graded:true}}
+      }:st);
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+    setEditSubModal(null);
+  }
+
+  // แก้ไข xpLog รายกิจกรรม
+  function saveEditLog(){
+    if(!s||!editLogModal)return;
+    const{idx,xp,maxXp,activity}=editLogModal;
+    const newXpVal=Number(xp);
+    const newMaxXpVal=Number(maxXp);
+    if(isNaN(newXpVal)||newXpVal<0)return;
+    if(isNaN(newMaxXpVal)||newMaxXpVal<=0)return;
+    const oldLog=s.xpLog?.[idx];
+    if(!oldLog)return;
+    const diff=newXpVal-oldLog.xp;
+    setStudents((prev:any)=>{
+      const updated=prev.map((st:any)=>{
+        if(st.id!==s.id)return st;
+        const newLog=[...(st.xpLog||[])];
+        newLog[idx]={...newLog[idx],xp:newXpVal,maxXp:newMaxXpVal,activity:activity.trim()||newLog[idx].activity};
+        return{...st,xp:st.xp+diff,xpLog:newLog};
+      });
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+    setEditLogModal(null);
+  }
+
+  if(s)return(
+    <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+      <button className="btn-outline" onClick={()=>setSel(null)} style={{marginBottom:20}}>← กลับ</button>
+      {editXpModal&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:420}}>
+            <div className="cond" style={{fontSize:22,color:"#f0a0c0",letterSpacing:2,marginBottom:16}}>✏️ แก้ไข XP — {s.name}</div>
+            <div style={{marginBottom:6,fontSize:13,color:"var(--muted2)"}}>XP ปัจจุบัน: <span className="mono" style={{color:"#f0a0c0",fontWeight:700}}>{s.xp.toLocaleString()} XP</span></div>
+            <div style={{marginBottom:16}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP ใหม่</label>
+              <input className="input" type="number" min="0" max="9999" value={newXp}
+                onChange={e=>setNewXp(e.target.value)} placeholder={String(s.xp)}
+                onKeyDown={e=>e.key==="Enter"&&saveEditXp()}/>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:6}}>⚠️ การแก้ไขนี้จะบันทึกลง Google Sheet ทันที</div>
+            </div>
+            {xpMsg&&<div style={{background:xpMsg.t==="ok"?"rgba(94,200,126,.14)":"rgba(232,96,96,.14)",border:`1px solid ${xpMsg.t==="ok"?"rgba(94,200,126,.4)":"rgba(232,96,96,.4)"}`,borderRadius:6,padding:"9px 14px",color:xpMsg.t==="ok"?"var(--green)":"var(--red)",fontSize:13,marginBottom:12}}>{xpMsg.text}</div>}
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={saveEditXp} style={{flex:1,fontSize:15,padding:12}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>{setEditXpModal(false);setXpMsg(null);setNewXp("");}} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal แก้ไข Submission */}
+      {editSubModal&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:460}}>
+            <div className="cond" style={{fontSize:20,color:"#f0a0c0",letterSpacing:2,marginBottom:16}}>✏️ แก้ไขคะแนนงาน</div>
+            <div style={{fontSize:13,color:"var(--muted2)",marginBottom:16}}>{assignments.find((a:any)=>a.id===editSubModal.assignmentId)?.title}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:8}}>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP ที่ได้</label>
+                <input className="input" type="number" min="0" value={editSubModal.xpEarned}
+                  onChange={e=>setEditSubModal({...editSubModal,xpEarned:e.target.value})}/>
+              </div>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP เต็ม</label>
+                <input className="input" type="number" min="1" value={editSubModal.maxXp}
+                  onChange={e=>{
+                    const newMax=Number(e.target.value)||1;
+                    const oldMax=editSubModal.origMaxXp||newMax;
+                    const ratio=newMax/oldMax;
+                    const newEarned=Math.round((editSubModal.origXpEarned||editSubModal.xpEarned)*ratio);
+                    setEditSubModal({...editSubModal,maxXp:newMax,xpEarned:newEarned});
+                  }}/>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"#eab308",marginBottom:16,padding:"8px 12px",background:"rgba(234,179,8,.1)",borderRadius:6}}>
+              💡 เมื่อแก้ XP เต็ม ระบบจะปรับ XP ที่ได้ตามสัดส่วนอัตโนมัติ
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={saveEditSub} style={{flex:1,fontSize:15,padding:12}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>setEditSubModal(null)} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal แก้ไข xpLog */}
+      {editLogModal&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:420}}>
+            <div className="cond" style={{fontSize:20,color:"#f0a0c0",letterSpacing:2,marginBottom:16}}>✏️ แก้ไขกิจกรรม</div>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ชื่อกิจกรรม</label>
+              <input className="input" value={editLogModal.activity}
+                onChange={e=>setEditLogModal({...editLogModal,activity:e.target.value})}/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP เต็ม</label>
+                <input className="input" type="number" min="1" value={editLogModal.maxXp}
+                  onChange={e=>setEditLogModal({...editLogModal,maxXp:e.target.value})}/>
+              </div>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP ที่ได้</label>
+                <input className="input" type="number" min="0" value={editLogModal.xp}
+                  onChange={e=>setEditLogModal({...editLogModal,xp:e.target.value})}/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={saveEditLog} style={{flex:1,fontSize:15,padding:12}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>setEditLogModal(null)} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="card card-gold" style={{marginBottom:16}}>
+        <div style={{display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{fontSize:52}}>{s.avatar}</div>
+          <div style={{flex:1}}><div className="cond" style={{fontSize:28,fontWeight:700,color:"#fff"}}>{s.name}</div></div>
+          <GradeTag xp={getEffectiveXP(s,assignments)} big={true}/>
+        </div>
+        <div style={{marginTop:16}}><XPBar xp={getEffectiveXP(s,assignments)}/></div>
+        <div style={{marginTop:10}}><ProgressFlag xp={getEffectiveXP(s,assignments)}/></div>
+        <div style={{marginTop:14,padding:"10px 14px",background:"rgba(234,179,8,.06)",border:"1px solid rgba(234,179,8,.2)",borderRadius:8,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+          <div style={{flex:1,minWidth:180}}>
+            <div className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:1}}>XP สะสมดิบ (คนละส่วนกับ Rank ด้านบน)</div>
+            <div className="mono" style={{fontSize:15,color:"#eab308",fontWeight:700}}>{s.xp.toLocaleString()} XP</div>
+          </div>
+          <button className="btn-ghost" onClick={()=>{setNewXp(String(s.xp));setEditXpModal(true);}} style={{fontSize:12,padding:"7px 14px",borderColor:"rgba(232,96,96,.4)",color:"var(--red)"}}>✏️ แก้ XP ดิบ</button>
+          <button className="btn-ghost" onClick={()=>recalcXp(s)} style={{fontSize:12,padding:"7px 14px",borderColor:"rgba(234,179,8,.4)",color:"#eab308"}}>🔄 คำนวณดิบใหม่</button>
+        </div>
+      </div>
+      <div className="card" style={{marginBottom:16}}>
+        <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:14}}>SUBMISSION STATUS</div>
+        {assignments.map(a=>{const sub=s.submissions?.[a.id];const tm=TYPE_META[a.type]||{};return(
+          <div key={a.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>
+            <span>{tm.icon||"📄"}</span><span style={{flex:1,fontSize:13}}>{a.title} <span style={{color:"var(--muted)",fontSize:11}}>(เต็ม {a.xp} XP / {xpToScore(a.xp)} คะแนน)</span></span>
+            {sub?<>
+              <a href={sub.file} target="_blank" rel="noreferrer" style={{fontSize:11,color:"var(--cyan)"}}>🔗 ดูงาน</a>
+              <span className="mono" style={{fontSize:11,color:"#f0a0c0"}}>{sub.xpEarned||0} XP ({xpToScore(sub.xpEarned||0)} คะแนน)</span>
+              <button className="btn-ghost" onClick={()=>setEditSubModal({
+                assignmentId:a.id,
+                xpEarned:sub.xpEarned||0,
+                maxXp:sub.maxXp||a.xp,
+                origXpEarned:sub.xpEarned||0,
+                origMaxXp:sub.maxXp||a.xp
+              })} style={{fontSize:11,padding:"4px 10px"}}>✏️</button>
+              <span className="badge" style={{background:"rgba(94,200,126,.12)",border:"1px solid rgba(94,200,126,.35)",color:"var(--green)"}}>✓ ส่งแล้ว</span>
+            </>:<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.25)",color:"var(--red)"}}>⏳ ยังไม่ส่ง</span>}
+          </div>
+        );})}</div>
+      {/* คะแนนรายส่วน */}
+      {(()=>{
+        const xpFromAssign=(phase)=>(assignments||[]).reduce((sum,a)=>{
+          if((a.phase||"before")!==phase)return sum;
+          const sub=s.submissions?.[a.id];
+          return sum+(sub?.graded?sub.xpEarned||0:0);
+        },0);
+        const xpFromLog=(phase)=>(s.xpLog||[]).reduce((sum,l)=>(l.phase||"before")===phase?sum+(l.xp||0):sum,0);
+        const sc1=Math.min(35,Math.round((xpFromAssign("before")+xpFromLog("before"))/25));
+        const sc2=Math.min(35,Math.round((xpFromAssign("after")+xpFromLog("after"))/25));
+        const sections=[
+          {label:"เก็บก่อนกลางภาค",color:"#185FA5",score:sc1,max:35},
+          {label:"สอบกลางภาค",color:"#5DCAA5",score:s.midterm??null,max:15,editable:true},
+          {label:"เก็บหลังกลางภาค",color:"#f472b6",score:sc2,max:35},
+          {label:"สอบปลายภาค",color:"#e88c4a",score:s.final??null,max:15,editable:true},
+        ];
+        return(
+          <div className="card" style={{marginBottom:16}}>
+            <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:16}}>📊 คะแนนรายส่วน</div>
+            {sections.map((sec,i)=>{
+              const pct=sec.score!==null?Math.round(sec.score/sec.max*100):null;
+              return(
+                <div key={i} style={{marginBottom:16}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <div style={{fontSize:13,color:"var(--muted2)",display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{width:10,height:10,borderRadius:2,background:sec.color,display:"inline-block"}}></span>
+                      {sec.label}
+                    </div>
+                    <div className="mono" style={{fontSize:13,color:sec.color}}>
+                      {sec.score!==null
+                        ?<><span style={{fontSize:18,fontWeight:700}}>{pct}%</span><span style={{color:"var(--muted)",fontSize:11}}> ({sec.score}/{sec.max})</span></>
+                        :<span style={{color:"var(--muted)",fontSize:11}}>รอกรอก</span>}
+                    </div>
+                  </div>
+                  <div style={{height:18,borderRadius:9,overflow:"hidden",background:"rgba(14,26,43,.6)",border:"1px solid rgba(212,168,67,.15)"}}>
+                    {sec.score!==null&&<div style={{height:"100%",borderRadius:9,background:sec.color,width:`${pct}%`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",fontFamily:"'Share Tech Mono',monospace"}}>
+                      {(pct||0)>10?`${pct}%`:""}
+                    </div>}
+                  </div>
+                </div>
+              );
+            })}
+            {(()=>{
+              const total=(s.midterm!==null&&s.final!==null)?sc1+(s.midterm||0)+sc2+(s.final||0):null;
+              const grade=total===null?null:total>=80?"4.0":total>=75?"3.5":total>=70?"3.0":total>=65?"2.5":total>=60?"2.0":total>=55?"1.5":total>=50?"1.0":"0";
+              return total!==null?(
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"rgba(232,188,85,.08)",border:"1px solid rgba(232,188,85,.3)",borderRadius:8,marginTop:4}}>
+                  <span style={{fontSize:13,color:"var(--muted2)"}}>รวมทั้งหมด</span>
+                  <div style={{display:"flex",alignItems:"center",gap:16}}>
+                    <span className="mono" style={{fontSize:20,fontWeight:700,color:"#f0a0c0"}}>{total}/100</span>
+                    <span className="cond" style={{fontSize:28,fontWeight:900,color:parseFloat(grade||"0")>=3.5?"var(--cyan)":parseFloat(grade||"0")>=2.5?"#f0a0c0":parseFloat(grade||"0")>=1.5?"var(--orange)":"var(--red)"}}>{grade}</span>
+                  </div>
+                </div>
+              ):null;
+            })()}
+          </div>
+        );
+      })()}
+      {/* xpLog section with edit */}
+      {(s.xpLog||[]).length>0&&(
+        <div className="card" style={{marginBottom:16}}>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:14}}>⭐ ประวัติ XP กิจกรรม</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[...(s.xpLog||[])].map((log:any,i:number)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",
+                background:"rgba(232,188,85,.06)",border:"1px solid rgba(232,188,85,.2)",borderRadius:8}}>
+                <div style={{fontSize:18}}>⭐</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{log.activity}</div>
+                  <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{log.date}</div>
+                </div>
+                <div className="mono" style={{fontSize:15,fontWeight:700,color:"#f0a0c0"}}>+{log.xp} XP</div>
+                <button className="btn-ghost" onClick={()=>setEditLogModal({idx:i,xp:log.xp,maxXp:log.maxXp||log.xp,activity:log.activity})}
+                  style={{fontSize:11,padding:"4px 10px",flexShrink:0}}>✏️</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {s.inventory&&s.inventory.length>0&&(
+        <div className="card" style={{borderColor:"rgba(170,143,240,.35)"}}>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:14}}>📦 AIRDROP INVENTORY ({s.inventory.length} ชิ้น)</div>
+          {s.inventory.map((item:any,idx:number)=>(
+            <div key={idx} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>
+              <span style={{fontSize:24}}>{item.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:600,color:item.color||"#fff"}}>{item.name}</div>
+                <div style={{fontSize:11,color:"var(--muted)"}}>{item.rarity} · {item.receivedAt}</div>
+                {item.note&&<div style={{fontSize:11,color:"var(--muted2)",fontStyle:"italic"}}>"{item.note}"</div>}
+              </div>
+              <button className="btn btn-red" onClick={()=>{if(window.confirm(`ลบ "${item.name}" ของ ${s.name}?`))removeAirdrop(s.id,idx);}} style={{padding:"6px 12px",fontSize:12}}>🗑 ลบ</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3}}>PLAYER ROSTER</div>
+        <button className="btn-ghost" onClick={recalcAllXp}
+          style={{fontSize:12,padding:"8px 16px",borderColor:"rgba(234,179,8,.4)",color:"#eab308"}}>
+          🔄 คำนวณ XP ใหม่ทั้งห้อง
+        </button>
+      </div>
+      {[...students].sort((a:any,b:any)=>getEffectiveXP(b,assignments)-getEffectiveXP(a,assignments)).map((s:any,i:number)=>{
+        const sxp=getEffectiveXP(s,assignments);const r=getRank(sxp);
+        const correct=calcCorrectXp(s);
+        const hasError=correct!==s.xp;
+        return(
+        <div key={s.id} className="card card-hover slide-r" style={{display:"flex",alignItems:"center",gap:16,marginBottom:10,animationDelay:`${i*.04}s`,
+          borderColor:hasError?"rgba(239,68,68,.5)":"var(--border)"}}>
+          <div style={{fontSize:40,cursor:"pointer"}} onClick={()=>setSel(s.id)}>{s.avatar}</div>
+          <div style={{flex:1,cursor:"pointer"}} onClick={()=>setSel(s.id)}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{fontSize:15,fontWeight:600,color:"#fff"}}>{s.name}</div>
+                <span className="badge" style={{background:s.room==="r1"?"rgba(240,160,192,.15)":"rgba(125,232,208,.15)",border:`1px solid ${s.room==="r1"?"rgba(240,160,192,.4)":"rgba(125,232,208,.4)"}`,color:s.room==="r1"?"#f0a0c0":"#7de8d0",fontSize:8}}>{s.room==="r1"?"ม.3/1":"ม.3/2"}</span>
+              </div>
+              {hasError&&<span style={{fontSize:10,background:"rgba(239,68,68,.2)",border:"1px solid rgba(239,68,68,.4)",
+                color:"#ef4444",padding:"2px 7px",borderRadius:4,fontFamily:"'Share Tech Mono',monospace"}}>
+                ⚠ XP ดิบไม่ตรง (ควรเป็น {correct})
+              </span>}
+            </div>
+            <div style={{maxWidth:280}}><XPBar xp={sxp} showLabel={false}/></div>
+          </div>
+          <div className="mono" style={{fontSize:20,color:hasError?"#ef4444":r.color}}>{sxp.toLocaleString()}</div>
+          <GradeTag xp={sxp}/>
+          {hasError&&<button className="btn-ghost" onClick={e=>{e.stopPropagation();recalcXp(s);}}
+            style={{fontSize:11,padding:"6px 12px",borderColor:"rgba(234,179,8,.4)",color:"#eab308",flexShrink:0}}>
+            🔄 แก้
+          </button>}
+          <div style={{color:"var(--muted)",cursor:"pointer"}} onClick={()=>setSel(s.id)}>›</div>
+        </div>
+      );})}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TEACHER: ASSIGNMENTS
+// ─────────────────────────────────────────────
+function TeacherAssignments({assignments,setAssignments,students,setStudents,skipNextSave,refreshFromSheet}){
+  const [modal,setModal]=useState(false);
+  const [form,setForm]=useState({chapterId:"CH1",title:"",xp:200,due:"",desc:"",type:"worksheet",phase:"before"});
+  const [checkModal,setCheckModal]=useState(null);
+  const [editXp,setEditXp]=useState({});
+  const [editMaxXp,setEditMaxXp]=useState("");
+  const [selRoomA,setSelRoomA]=useState("all");
+  const filteredStudentsA=selRoomA==="all"?students:students.filter((s:any)=>s.room===selRoomA);
+
+  function save(){
+    if(!form.title.trim())return;
+    const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
+    setAssignments(prev=>[...prev,{...form,id:"A"+Date.now(),xp:Number(form.xp),createdAt:today}]);
+    setModal(false);setForm({chapterId:"CH1",title:"",xp:200,due:"",desc:"",type:"worksheet",phase:"before"});
+  }
+  function del(id){if(window.confirm("ลบงานนี้?"))setAssignments(prev=>prev.filter(a=>a.id!==id));}
+  // เปลี่ยนแท็กก่อน/หลังกลางภาคของใบงานที่มีอยู่แล้ว — ไม่กระทบคะแนน/การส่งงานเดิม
+  function setPhase(id,phase){setAssignments(prev=>prev.map(a=>a.id===id?{...a,phase}:a));}
+
+  // ── แก้ไขใบงานที่ลงไปแล้ว (ชื่อ/คะแนนเต็ม/กำหนดส่ง/รายละเอียด/ประเภท) ──
+  const [editModal,setEditModal]=useState(null);
+  const [editForm,setEditForm]=useState({chapterId:"CH1",title:"",xp:200,due:"",desc:"",type:"worksheet",unit:"xp"});
+  function openEdit(a){setEditModal(a);setEditForm({chapterId:a.chapterId,title:a.title,xp:a.xp,due:a.due,desc:a.desc,type:a.type,unit:"xp"});}
+  function saveEdit(){
+    if(!editModal||!editForm.title.trim())return;
+    const newXp=Number(editForm.xp)||0;
+    if(newXp<=0)return;
+    const oldXp=editModal.xp||1;
+    setAssignments(prev=>prev.map(a=>a.id===editModal.id?{...a,title:editForm.title,due:editForm.due,desc:editForm.desc,type:editForm.type,chapterId:editForm.chapterId,xp:newXp}:a));
+    // ปรับคะแนนทุกคนที่ได้ไปแล้วตามสัดส่วนใหม่อัตโนมัติ (ไม่ใช่แค่ตัดคนที่ได้เกิน)
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      const sub=s.submissions?.[editModal.id];
+      if(!sub||!sub.graded)return s;
+      const oldEarned=sub.xpEarned||0;
+      const newEarned=Math.round(oldEarned/oldXp*newXp);
+      const diff=newEarned-oldEarned;
+      return{...s,xp:s.xp+diff,submissions:{...s.submissions,[editModal.id]:{...sub,xpEarned:newEarned,maxXp:newXp}}};
+    }));
+    setEditModal(null);
+  }
+
+  function openCheck(a){
+    setCheckModal(a);
+    setEditMaxXp(String(a.xp));
+    const init={};
+    students.forEach(s=>{const sub=s.submissions?.[a.id];init[s.id]=sub?.xpEarned??a.xp;});
+    setEditXp(init);
+  }
+
+  // ปรับ XP เต็มทั้งห้อง + ปรับสัดส่วนทุกคนที่ส่งแล้ว
+  function applyNewMaxXp(){
+    const a=checkModal;
+    const newMax=Number(editMaxXp);
+    if(!newMax||newMax<=0)return;
+    const oldMax=a.xp;
+    if(newMax===oldMax)return;
+    if(!window.confirm(`ปรับ XP เต็มจาก ${oldMax} → ${newMax} และปรับคะแนนทุกคนตามสัดส่วน?`))return;
+    // อัปเดต assignment xp
+    setAssignments((prev:any)=>prev.map((x:any)=>x.id===a.id?{...x,xp:newMax}:x));
+    // ปรับ XP นักเรียนทุกคนที่ส่งแล้ว
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      const sub=s.submissions?.[a.id];
+      if(!sub)return s;
+      const oldEarned=sub.xpEarned||0;
+      const newEarned=Math.round(oldEarned/oldMax*newMax);
+      const diff=newEarned-oldEarned;
+      return{...s,xp:s.xp+diff,
+        submissions:{...s.submissions,[a.id]:{...sub,xpEarned:newEarned,maxXp:newMax}}};
+    }));
+    // อัปเดต editXp state ให้แสดงค่าใหม่
+    const newInit:any={};
+    students.forEach((s:any)=>{
+      const sub=s.submissions?.[a.id];
+      if(sub){const oldE=sub.xpEarned||0;newInit[s.id]=Math.round(oldE/oldMax*newMax);}
+    });
+    setEditXp(newInit);
+    setCheckModal({...a,xp:newMax});
+    setEditMaxXp(String(newMax));
+  }
+
+  function saveXp(studentId){
+    const a=checkModal;
+    const newXp=Number(editXp[studentId]||0);
+    if(skipNextSave)skipNextSave(); // กันไม่ให้ auto-save ทั่วไป (ทับทั้ง array) มาเขียนทับซ้ำหลังบันทึกผ่านช่องทางปลอดภัยนี้ไปแล้ว
+    setStudents(prev=>prev.map(s=>{
+      if(s.id!==studentId)return s;
+      const sub=s.submissions?.[a.id];
+      if(!sub)return s;
+      const wasGraded=sub.graded||false;
+      const oldXp=wasGraded?(sub.xpEarned||0):0;
+      const diff=newXp-oldXp;
+      return{...s,xp:s.xp+diff,submissions:{...s.submissions,[a.id]:{...sub,xpEarned:newXp,graded:true,maxXp:sub.maxXp||a.xp}}};
+    }));
+    gasGradeSubmission({studentId,assignmentId:a.id,xpEarned:newXp});
+    if(refreshFromSheet)setTimeout(()=>{refreshFromSheet();},1500);
+  }
+
+  const submitted=checkModal?filteredStudentsA.filter((s:any)=>s.submissions?.[checkModal.id]):[];
+  const notSubmitted=checkModal?filteredStudentsA.filter((s:any)=>!s.submissions?.[checkModal.id]):[];
+
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+      {modal&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:500}}>
+            <div className="cond" style={{fontSize:24,color:"#f0a0c0",letterSpacing:2,marginBottom:20}}>➕ เพิ่มงาน / ภารกิจ</div>
+            {[["ชื่องาน","title","text"],["XP รางวัล","xp","number"],["วันครบกำหนด","due","text"],["รายละเอียด","desc","text"]].map(([l,k,t])=>(
+              <div key={k} style={{marginBottom:14}}>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>{l.toUpperCase()}</label>
+                <input className="input" type={t} value={form[k]} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} placeholder={l}/>
+              </div>
+            ))}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+              <div><label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>บทเรียน</label>
+                <select className="input" value={form.chapterId} onChange={e=>setForm(p=>({...p,chapterId:e.target.value}))}>
+                  {CHAPTERS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.title}</option>)}
+                </select>
+              </div>
+              <div><label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>ประเภทงาน</label>
+                <select className="input" value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))}>
+                  {Object.entries(TYPE_META).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>ช่วงเวลา</label>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                {[["before","🟣 ก่อนกลางภาค"],["after","🔵 หลังกลางภาค"]].map(([v,l])=>(
+                  <button key={v} type="button" onClick={()=>setForm(p=>({...p,phase:v}))} className="btn"
+                    style={{background:form.phase===v?"rgba(232,188,85,.18)":"rgba(255,255,255,.05)",
+                      border:`1px solid ${form.phase===v?"rgba(232,188,85,.6)":"var(--border)"}`,
+                      color:form.phase===v?"var(--gold)":"var(--muted2)",
+                      borderRadius:6,padding:"10px 6px",fontSize:12,
+                      fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:.5}}>{l}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={save} style={{flex:1,fontSize:16,padding:13}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>setModal(false)} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editModal&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:500}}>
+            <div className="cond" style={{fontSize:24,color:"var(--gold)",letterSpacing:2,marginBottom:20}}>✏️ แก้ไขงาน</div>
+            {[["ชื่องาน","title","text"],["วันครบกำหนด","due","text"],["รายละเอียด","desc","text"]].map(([l,k,t])=>(
+              <div key={k} style={{marginBottom:14}}>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>{l.toUpperCase()}</label>
+                <input className="input" type={t} value={(editForm as any)[k]} onChange={e=>setEditForm(p=>({...p,[k]:e.target.value}))} placeholder={l}/>
+              </div>
+            ))}
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>คะแนนเต็ม</label>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8}}>
+                <input className="input" type="number" min="1"
+                  value={editForm.unit==="xp"?editForm.xp:xpToScore(editForm.xp)}
+                  onChange={e=>{const v=Number(e.target.value)||0;setEditForm(p=>({...p,xp:p.unit==="xp"?v:v*25}));}}/>
+                <div style={{display:"flex",gap:4}}>
+                  {[["xp","XP"],["points","คะแนน"]].map(([u,l])=>(
+                    <button key={u} type="button" onClick={()=>setEditForm(p=>({...p,unit:u}))}
+                      style={{background:editForm.unit===u?"rgba(232,188,85,.18)":"rgba(255,255,255,.05)",
+                        border:`1px solid ${editForm.unit===u?"rgba(232,188,85,.6)":"var(--border)"}`,
+                        color:editForm.unit===u?"var(--gold)":"var(--muted2)",borderRadius:6,padding:"0 12px",
+                        fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12}}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:6}}>= {editForm.xp} XP ({xpToScore(editForm.xp)} คะแนน)</div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+              <div><label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>บทเรียน</label>
+                <select className="input" value={editForm.chapterId} onChange={e=>setEditForm(p=>({...p,chapterId:e.target.value}))}>
+                  {CHAPTERS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.title}</option>)}
+                </select>
+              </div>
+              <div><label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>ประเภทงาน</label>
+                <select className="input" value={editForm.type} onChange={e=>setEditForm(p=>({...p,type:e.target.value}))}>
+                  {Object.entries(TYPE_META).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"#eab308",marginBottom:16,padding:"8px 12px",background:"rgba(234,179,8,.1)",borderRadius:6}}>
+              💡 คะแนนที่นักเรียนได้ไปแล้วทุกคน จะถูกปรับสัดส่วนใหม่ให้อัตโนมัติตามคะแนนเต็มใหม่นี้
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={saveEdit} style={{flex:1,fontSize:16,padding:13}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>setEditModal(null)} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {checkModal&&(
+        <div className="overlay">
+          <div className="card" style={{width:"100%",maxWidth:580,maxHeight:"85vh",overflowY:"auto",
+            borderColor:"rgba(78,202,174,.4)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
+              <div style={{flex:1}}>
+                <div className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:2,marginBottom:4}}>ตรวจงาน</div>
+                <div className="cond" style={{fontSize:20,fontWeight:700,color:"#fff"}}>{checkModal.title}</div>
+                <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap",alignItems:"center"}}>
+                  <span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ ส่งแล้ว {submitted.length} คน</span>
+                  <span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.28)",color:"var(--red)"}}>⏳ ยังไม่ส่ง {notSubmitted.length} คน</span>
+                </div>
+                {/* แก้ XP เต็มทั้งห้อง */}
+                <div style={{display:"flex",alignItems:"center",gap:10,marginTop:14,padding:"10px 14px",
+                  background:"rgba(232,188,85,.08)",border:"1px solid rgba(232,188,85,.3)",borderRadius:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:12,color:"var(--muted2)",flexShrink:0}}>XP เต็มทั้งห้อง:</span>
+                  <input type="number" min="1" value={editMaxXp}
+                    onChange={e=>setEditMaxXp(e.target.value)}
+                    style={{width:80,background:"rgba(14,26,43,.8)",border:"1px solid var(--border2)",
+                      color:"#f0a0c0",borderRadius:5,padding:"5px 8px",
+                      fontFamily:"'Share Tech Mono',monospace",fontSize:15,textAlign:"center",outline:"none"}}/>
+                  <button className="btn btn-gold" onClick={applyNewMaxXp}
+                    style={{fontSize:12,padding:"7px 16px"}}>⚖️ ปรับทั้งห้องตามสัดส่วน</button>
+                  <span style={{fontSize:10,color:"var(--muted)"}}>ปัจจุบัน: {checkModal.xp} XP</span>
+                </div>
+              </div>
+              <button className="btn-outline" onClick={()=>setCheckModal(null)} style={{padding:"7px 14px"}}>✕</button>
+            </div>
+            {submitted.map(s=>{
+              const sub=s.submissions[checkModal.id];
+              return(
+                <div key={s.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",marginBottom:8,
+                  background:"rgba(94,200,126,.06)",border:"1px solid rgba(94,200,126,.22)",borderRadius:8}}>
+                  <span style={{fontSize:26,flexShrink:0}}>{s.avatar}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#fff"}}>{s.name}</div>
+                    <a href={sub.file} target="_blank" rel="noreferrer" style={{fontSize:11,color:"var(--cyan)",marginTop:2,display:"block"}}>🔗 ดูงาน · {sub.submittedAt}</a>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                    <div>
+                      <div className="mono" style={{fontSize:9,color:"var(--muted)",marginBottom:4}}>XP ที่ได้</div>
+                      <input type="number" value={editXp[s.id]??sub.xpEarned} min={0} max={checkModal.xp*2}
+                        onChange={e=>setEditXp(p=>({...p,[s.id]:e.target.value}))}
+                        style={{width:72,background:"rgba(14,26,43,.8)",border:"1px solid var(--border2)",
+                          color:"#f0a0c0",borderRadius:5,padding:"6px 8px",
+                          fontFamily:"'Share Tech Mono',monospace",fontSize:15,textAlign:"center",outline:"none"}}/>
+                    </div>
+                    <button className="btn btn-cyan" onClick={()=>saveXp(s.id)} style={{padding:"8px 14px",fontSize:12}}>💾</button>
+                  </div>
+                </div>
+              );
+            })}
+            {notSubmitted.map(s=>(
+              <div key={s.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",marginBottom:6,
+                background:"rgba(232,96,96,.04)",border:"1px solid rgba(232,96,96,.18)",borderRadius:8,opacity:.7}}>
+                <span style={{fontSize:24}}>{s.avatar}</span>
+                <span style={{fontSize:13,color:"var(--muted2)"}}>{s.name}</span>
+                <div style={{flex:1}}/>
+                <span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.25)",color:"var(--red)"}}>ยังไม่ส่ง</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+        <div>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3}}>MISSION CONTROL</div>
+          <div className="cond" style={{fontSize:22,color:"var(--text)",marginTop:2}}>{assignments.length} งาน</div>
+        </div>
+        <button className="btn btn-gold" onClick={()=>setModal(true)} style={{fontSize:16,padding:"12px 28px"}}>➕ เพิ่มงานใหม่</button>
+      </div>
+      {/* Room filter */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {[{id:"all",label:"🌸 ทุกห้อง"},{id:"r1",label:"🌸 ม.3/1"},{id:"r2",label:"🌿 ม.3/2"}].map(r=>(
+          <button key={r.id} onClick={()=>setSelRoomA(r.id)} className="btn"
+            style={{background:selRoomA===r.id?"rgba(240,160,192,.2)":"rgba(255,255,255,.04)",
+              border:`1px solid ${selRoomA===r.id?"rgba(240,160,192,.5)":"var(--border)"}`,
+              color:selRoomA===r.id?"#f0a0c0":"var(--muted2)",borderRadius:8,padding:"8px 16px",
+              fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{r.label}</button>
+        ))}
+      </div>
+
+      {CHAPTERS.map(ch=>{
+        const chA=assignments.filter(a=>a.chapterId===ch.id);
+        return(
+          <div key={ch.id} style={{marginBottom:24}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${ch.color}35`}}>
+              <span style={{fontSize:20}}>{ch.icon}</span>
+              <div className="cond" style={{fontSize:20,fontWeight:700,color:ch.color}}>{ch.title}</div>
+              <span className="badge" style={{background:`${ch.color}20`,border:`1px solid ${ch.color}50`,color:ch.color}}>{chA.length} งาน</span>
+            </div>
+            {chA.length===0&&<div style={{color:"var(--muted)",fontSize:13,padding:"8px 0"}}>ยังไม่มีงาน</div>}
+            {chA.map(a=>{
+              const tm=TYPE_META[a.type]||{};
+              const submittedCount=filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length;
+              return(
+                <div key={a.id} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:`${ch.color}25`,flexWrap:"wrap"}}>
+                  <div style={{fontSize:24,flexShrink:0}}>{tm.icon||"📄"}</div>
+                  <div style={{flex:1,minWidth:200}}>
+                    <div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{a.title}</div>
+                    <div style={{fontSize:11,color:"var(--muted)",marginTop:2,whiteSpace:"nowrap"}}>(เต็ม {a.xp} XP / {xpToScore(a.xp)} คะแนน)</div>
+                    <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{a.desc} · <span style={{whiteSpace:"nowrap"}}>{a.due}</span></div>
+                    <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+                      <span className="badge" style={{background:"rgba(94,200,126,.12)",border:"1px solid rgba(94,200,126,.35)",color:"var(--green)"}}>✓ {filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length}/{filteredStudentsA.length} คน</span>
+                      {filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length<filteredStudentsA.length&&<span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.25)",color:"var(--red)"}}>⏳ ค้าง {filteredStudentsA.length-filteredStudentsA.filter((s:any)=>s.submissions?.[a.id]).length}</span>}
+                      <button onClick={()=>setPhase(a.id,(a.phase||"before")==="before"?"after":"before")}
+                        className="badge" style={{cursor:"pointer",border:"none",whiteSpace:"nowrap",
+                          background:(a.phase||"before")==="before"?"rgba(167,139,250,.15)":"rgba(244,114,182,.15)",
+                          color:(a.phase||"before")==="before"?"#a78bfa":"#f472b6"}}
+                        title="คลิกเพื่อสลับ">
+                        {(a.phase||"before")==="before"?"🟣 ก่อนกลางภาค":"🔵 หลังกลางภาค"}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",flexShrink:0}}>
+                    <div className="mono" style={{color:"#f0a0c0",fontSize:13,textAlign:"center",whiteSpace:"nowrap"}}>{a.xp} XP<div style={{fontSize:10,color:"var(--muted)"}}>{xpToScore(a.xp)} คะแนน</div></div>
+                    <button className="btn-ghost" onClick={()=>openEdit(a)} style={{padding:"7px 12px",fontSize:13,flexShrink:0,whiteSpace:"nowrap"}}>✏️ แก้ไข</button>
+                    <button className="btn btn-cyan" onClick={()=>openCheck(a)} style={{padding:"8px 16px",fontSize:13,flexShrink:0,whiteSpace:"nowrap"}}>👁 ตรวจ</button>
+                    <button className="btn btn-red" onClick={()=>del(a.id)} style={{padding:"7px 12px",fontSize:13,flexShrink:0}}>🗑</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TEACHER: RESOURCES
+// ─────────────────────────────────────────────
+function TeacherResources({resources,setResources}){
+  const [modal,setModal]=useState(false);
+  const [form,setForm]=useState({chapterId:"CH1",title:"",type:"pdf",link:""});
+  function save(){
+    if(!form.title.trim())return;
+    const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
+    setResources(prev=>[...prev,{...form,id:"R"+Date.now(),uploadedAt:today}]);
+    setModal(false);setForm({chapterId:"CH1",title:"",type:"pdf",link:""});
+  }
+  function del(id){if(window.confirm("ลบไฟล์นี้?"))setResources(prev=>prev.filter(r=>r.id!==id));}
+  const ti={pdf:"📄",ppt:"📊",doc:"📝",img:"🖼️",zip:"📦",link:"🔗"};
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+      {modal&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:480}}>
+            <div className="cond" style={{fontSize:24,color:"#f0a0c0",letterSpacing:2,marginBottom:20}}>📁 เพิ่มไฟล์ความรู้</div>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>บทเรียน</label>
+              <select className="input" value={form.chapterId} onChange={e=>setForm(p=>({...p,chapterId:e.target.value}))}>
+                {CHAPTERS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.title}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>ชื่อไฟล์ / สไลด์</label>
+              <input className="input" value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="เช่น สไลด์บทที่ 1"/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>ประเภท</label>
+              <select className="input" value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))}>
+                {Object.entries(ti).map(([k,v])=><option key={k} value={k}>{v} {k.toUpperCase()}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:7}}>🔗 Google Drive Link</label>
+              <input className="input" value={form.link} onChange={e=>setForm(p=>({...p,link:e.target.value}))} placeholder="https://drive.google.com/..."/>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:5}}>💡 Drive → คลิกขวาไฟล์ → "Get link" → วางที่นี่</div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={save} style={{flex:1,fontSize:15,padding:13}}>✅ บันทึก</button>
+              <button className="btn-outline" onClick={()=>setModal(false)} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3}}>KNOWLEDGE FILES</div>
+          <div className="cond" style={{fontSize:22,color:"var(--text)",marginTop:2}}>{resources.length} ไฟล์</div>
+        </div>
+        <button className="btn btn-gold" onClick={()=>setModal(true)} style={{fontSize:15,padding:"12px 24px"}}>➕ เพิ่มไฟล์ใหม่</button>
+      </div>
+      {CHAPTERS.map(ch=>{const chR=resources.filter(r=>r.chapterId===ch.id);return(
+        <div key={ch.id} style={{marginBottom:24}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${ch.color}35`}}>
+            <span style={{fontSize:20}}>{ch.icon}</span>
+            <div className="cond" style={{fontSize:20,fontWeight:700,color:ch.color}}>{ch.title}</div>
+            <span className="badge" style={{background:`${ch.color}20`,border:`1px solid ${ch.color}50`,color:ch.color}}>{chR.length} ไฟล์</span>
+          </div>
+          {chR.length===0&&<div style={{color:"var(--muted)",fontSize:13}}>ยังไม่มีไฟล์</div>}
+          {chR.map(r=>(
+            <div key={r.id} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:`${ch.color}25`}}>
+              <div style={{fontSize:28}}>{ti[r.type]||"📄"}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{r.title}</div>
+                <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>{r.uploadedAt}</div>
+                {r.link&&<a href={r.link} target="_blank" rel="noreferrer" style={{fontSize:11,color:"var(--cyan)",marginTop:2,display:"block"}}>🔗 เปิดไฟล์</a>}
+              </div>
+              <button className="btn btn-red" onClick={()=>del(r.id)} style={{padding:"7px 14px",fontSize:13}}>🗑</button>
+            </div>
+          ))}
+        </div>
+      );})}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// TEACHER: XP MANAGEMENT (อัปเกรด)
+// ─────────────────────────────────────────────
+function TeacherScores({students,setStudents,assignments}){
+  const [tab,setTab]=useState("add");
+  useEffect(()=>{window.scrollTo(0,0);},[tab]);
+  const [selRoomFilter,setSelRoomFilter]=useState("all");
+  const [maxXpAmt,setMaxXpAmt]=useState(""); // XP เต็มของกิจกรรมนี้ — ตั้งครั้งเดียว ค้างไว้ได้จนกว่าจะกด "เสร็จสิ้น" (รองรับงานกลุ่มที่ให้คะแนนหลายรอบ)
+  const [activityName,setActivityName]=useState("");
+  const [selChapter,setSelChapter]=useState("CH1");
+  const [selPhase,setSelPhase]=useState("before");
+  const [selected,setSelected]=useState<any>({}); // {studentId:true} = เลือกไว้สำหรับกลุ่มที่กำลังจะบันทึกรอบนี้
+  const [perStuXp,setPerStuXp]=useState<any>({}); // {studentId:"ค่าที่กรอก"} — ว่างเปล่าโดยดีฟอลต์ ไม่ auto-fill เต็ม
+  const [bulkFillValue,setBulkFillValue]=useState(""); // ช่องกรอกคะแนนทีเดียวใส่ให้ทุกคนที่เลือก
+  const [msg,setMsg]=useState(null);
+  const [editAct,setEditAct]=useState<any>(null); // {oldName, newName, newChapterId, newMaxXp}
+  const [editEntry,setEditEntry]=useState<any>(null); // {activityName, studentId, studentName, xp, maxXp, isNew}
+  function saveEditEntry(){
+    if(!editEntry)return;
+    const{activityName,studentId,xp,maxXp}=editEntry;
+    const newXp=Number(xp);
+    if(isNaN(newXp)||newXp<0){toast("กรุณาใส่ XP ให้ถูกต้อง",true);return;}
+    const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      if(s.id!==studentId)return s;
+      const idx=(s.xpLog||[]).findIndex((l:any)=>l.activity===activityName);
+      if(idx===-1){
+        // คนนี้ยังไม่เคยได้รับกิจกรรมนี้มาก่อน — เพิ่มรายการใหม่ให้
+        const act:any=allActivities.find((a:any)=>a.name===activityName);
+        const logEntry={activity:activityName,xp:newXp,maxXp:Number(maxXp)||act?.maxXp||newXp,date:today,chapterId:act?.chapterId||"CH1",phase:act?.phase||"before"};
+        return{...s,xp:s.xp+newXp,xpLog:[...(s.xpLog||[]),logEntry]};
+      }
+      const oldXp=s.xpLog[idx].xp||0;
+      const diff=newXp-oldXp;
+      const newLog=[...s.xpLog];
+      newLog[idx]={...newLog[idx],xp:newXp};
+      return{...s,xp:s.xp+diff,xpLog:newLog};
+    }));
+    toast(`✅ แก้ไข XP ของ ${editEntry.studentName} สำเร็จ!`);
+    setEditEntry(null);
+  }
+  function deleteEditEntry(){
+    if(!editEntry||editEntry.isNew)return;
+    const{activityName,studentId,studentName}=editEntry;
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      if(s.id!==studentId)return s;
+      const idx=(s.xpLog||[]).findIndex((l:any)=>l.activity===activityName);
+      if(idx===-1)return s;
+      const oldXp=s.xpLog[idx].xp||0;
+      const newLog=s.xpLog.filter((_:any,i:number)=>i!==idx);
+      return{...s,xp:s.xp-oldXp,xpLog:newLog};
+    }));
+    toast(`🗑 ลบ XP ของ ${studentName} ในกิจกรรมนี้แล้ว (กลับเป็นยังไม่ได้คะแนน)`);
+    setEditEntry(null);
+  }
+
+  function toast(t,isErr=false){setMsg({text:t,err:isErr});setTimeout(()=>setMsg(null),3500);}
+  const filteredStudents=selRoomFilter==="all"?students:students.filter((s:any)=>s.room===selRoomFilter);
+  // เช็คว่านักเรียนคนนี้เคยได้รับ "กิจกรรมที่กำลังตั้งค่าอยู่ตอนนี้" ไปแล้วหรือยัง (สำหรับงานกลุ่ม บันทึกได้หลายรอบ)
+  function alreadyGiven(s:any){return activityName.trim()&&(s.xpLog||[]).some((l:any)=>l.activity===activityName.trim());}
+  function givenEntry(s:any){return (s.xpLog||[]).find((l:any)=>l.activity===activityName.trim());}
+  const notGivenList=filteredStudents.filter((s:any)=>!alreadyGiven(s));
+  const givenList=filteredStudents.filter((s:any)=>alreadyGiven(s));
+  function toggleSelect(id:string){setSelected((p:any)=>({...p,[id]:!p[id]}));}
+  function selectedIds(){return Object.keys(selected).filter(id=>selected[id]);}
+  function applyBulkFill(){
+    const v=bulkFillValue;
+    if(v===""||isNaN(Number(v)))return;
+    const ids=selectedIds();
+    setPerStuXp((p:any)=>{const n={...p};ids.forEach(id=>n[id]=v);return n;});
+  }
+  function undoDuringSession(studentId:string){
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      if(s.id!==studentId)return s;
+      const idx=(s.xpLog||[]).findIndex((l:any)=>l.activity===activityName.trim());
+      if(idx===-1)return s;
+      const oldXp=s.xpLog[idx].xp||0;
+      const newLog=s.xpLog.filter((_:any,i:number)=>i!==idx);
+      return{...s,xp:s.xp-oldXp,xpLog:newLog};
+    }));
+  }
+  function finishGroup(){
+    setMaxXpAmt("");setActivityName("");setSelChapter("CH1");setSelPhase("before");
+    setSelected({});setPerStuXp({});setBulkFillValue("");
+  }
+
+  function saveEditActivity(){
+    if(!editAct)return;
+    const{oldName,newName,newChapterId,newMaxXp,newPhase,oldMaxXp}=editAct;
+    if(!newName.trim()){toast("กรุณาใส่ชื่อกิจกรรม",true);return;}
+    const newMax=Number(newMaxXp)||0;
+    if(newMax<=0){toast("กรุณาใส่ XP เต็มให้ถูกต้อง",true);return;}
+    // ใช้ "เต็มเดิม" ค่าเดียวกันสำหรับทุกคน (จับไว้ตอนเปิดหน้าต่างแก้ไข) แทนการอ่านจากข้อมูลแต่ละคน
+    // กันปัญหาข้อมูลบางคนไม่มี maxXp บันทึกไว้ ซึ่งจะทำให้สัดส่วนเพี้ยนเป็น 100% ของทุกคนผิดๆ
+    const oldMax=Number(oldMaxXp)||1;
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      let xpDiff=0;
+      const newLog=(s.xpLog||[]).map((log:any)=>{
+        if(log.activity!==oldName)return log;
+        const newEarned=Math.round((log.xp||0)/oldMax*newMax);
+        xpDiff+=newEarned-(log.xp||0);
+        return{...log,activity:newName.trim(),chapterId:newChapterId,maxXp:newMax,xp:newEarned,phase:newPhase||"before"};
+      });
+      return{...s,xp:s.xp+xpDiff,xpLog:newLog};
+    }));
+    toast(`✅ แก้ไข "${oldName}" → "${newName}" สำเร็จ!`);
+    setEditAct(null);
+  }
+
+  function deleteActivity(name){
+    if(!window.confirm(`ลบกิจกรรม "${name}" ออกจากนักเรียนทุกคนเลยไหม? (คะแนนที่เคยให้ไปจะถูกหักออกด้วย)`))return;
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      const removed=(s.xpLog||[]).filter((log:any)=>log.activity===name);
+      const removedXp=removed.reduce((sum:number,log:any)=>sum+(log.xp||0),0);
+      const newLog=(s.xpLog||[]).filter((log:any)=>log.activity!==name);
+      return{...s,xp:s.xp-removedXp,xpLog:newLog};
+    }));
+    toast(`🗑 ลบกิจกรรม "${name}" ออกจากทุกคนแล้ว`);
+  }
+
+  function doAdd(){
+    if(!maxXpAmt||Number(maxXpAmt)<=0){toast("กรุณาใส่ XP เต็มของกิจกรรมนี้",true);return;}
+    if(!activityName.trim()){toast("กรุณาใส่ชื่องาน/กิจกรรม",true);return;}
+    const ids=selectedIds().filter(id=>!alreadyGiven(filteredStudents.find((s:any)=>s.id===id)));
+    if(ids.length===0){toast("กรุณาเลือกนักเรียนอย่างน้อย 1 คน",true);return;}
+    // ต้องกรอกคะแนนให้ครบทุกคนที่เลือกก่อนบันทึก
+    const missing=ids.some(id=>perStuXp[id]===undefined||perStuXp[id]===""||isNaN(Number(perStuXp[id])));
+    if(missing){toast("กรุณากรอกคะแนนให้ครบทุกคนที่เลือก",true);return;}
+    const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      if(!ids.includes(s.id))return s;
+      const earned=Number(perStuXp[s.id])||0;
+      const logEntry={activity:activityName.trim(),xp:earned,maxXp:Number(maxXpAmt),date:today,chapterId:selChapter,phase:selPhase};
+      return{...s,xp:s.xp+earned,xpLog:[...(s.xpLog||[]),logEntry]};
+    }));
+    toast(`✅ บันทึกกลุ่มนี้ให้ ${ids.length} คนแล้ว — เลือกกลุ่มถัดไปได้เลย หรือกด "เสร็จสิ้น" ถ้าให้ครบแล้ว`);
+    setSelected({});setPerStuXp({});setBulkFillValue("");
+  }
+
+  const allActivities=useMemo(()=>{
+    const map={};
+    students.forEach(s=>{
+      (s.xpLog||[]).forEach(log=>{
+        if(!map[log.activity])map[log.activity]={name:log.activity,chapterId:log.chapterId||"CH1",phase:log.phase||"before",entries:{}};
+        map[log.activity].entries[s.id]={xp:log.xp,maxXp:log.maxXp,date:log.date};
+        map[log.activity].maxXp=Math.max(map[log.activity].maxXp||0,log.maxXp||log.xp||0);
+        map[log.activity].phase=log.phase||"before";
+      });
+    });
+    return Object.values(map);
+  },[students]);
+
+  const tabStyle=(t)=>({
+    background:tab===t?"rgba(232,188,85,.12)":"transparent",
+    border:"none",borderBottom:tab===t?"2px solid var(--gold)":"2px solid transparent",
+    color:tab===t?"#f0a0c0":"var(--muted2)",
+    padding:"10px 22px",cursor:"pointer",
+    fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,
+    transition:"all .2s"
+  });
+
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:960,margin:"0 auto"}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:16}}>XP MANAGEMENT</div>
+      {/* Room filter */}
+      <div style={{display:"flex",gap:8,marginBottom:14}}>
+        {[{id:"all",label:"🌸 ทุกห้อง"},{id:"r1",label:"🌸 ม.3/1"},{id:"r2",label:"🌿 ม.3/2"}].map(r=>(
+          <button key={r.id} onClick={()=>setSelRoomFilter(r.id)} className="btn"
+            style={{background:selRoomFilter===r.id?"rgba(240,160,192,.2)":"rgba(255,255,255,.04)",
+              border:`1px solid ${selRoomFilter===r.id?"rgba(240,160,192,.5)":"var(--border)"}`,
+              color:selRoomFilter===r.id?"#f0a0c0":"var(--muted2)",borderRadius:8,padding:"8px 16px",
+              fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{r.label}</button>
+        ))}
+      </div>
+      <div style={{display:"flex",borderBottom:"1px solid var(--border)",marginBottom:20}}>
+        <button style={tabStyle("add")} onClick={()=>setTab("add")}>⭐ เพิ่ม XP</button>
+        <button style={tabStyle("summary")} onClick={()=>setTab("summary")}>📊 สรุปรายงาน</button>
+      </div>
+      {msg&&<div style={{background:msg.err?"rgba(232,96,96,.14)":"rgba(94,200,126,.14)",
+        border:`1px solid ${msg.err?"rgba(232,96,96,.4)":"rgba(94,200,126,.4)"}`,
+        borderRadius:7,padding:"13px 18px",color:msg.err?"var(--red)":"var(--green)",
+        fontSize:14,marginBottom:16,textAlign:"center"}}>{msg.text}</div>}
+
+      {tab==="add"&&(
+        <>
+          <div className="card card-gold" style={{marginBottom:20}}>
+            <div className="cond" style={{fontSize:22,color:"#f0a0c0",letterSpacing:2,marginBottom:4}}>⭐ เพิ่ม XP จากกิจกรรม</div>
+            {activityName.trim()&&<div style={{fontSize:11,color:"var(--green)",marginBottom:14}}>✓ ตั้งค่ากิจกรรมนี้ไว้แล้ว — บันทึกได้หลายกลุ่มต่อเนื่อง (เหมาะกับงานกลุ่ม) โดยไม่ต้องตั้งใหม่</div>}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,marginBottom:14,opacity:givenList.length>0?.55:1}}>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>บทเรียน</label>
+                <select className="input" value={selChapter} onChange={e=>setSelChapter(e.target.value)} disabled={givenList.length>0}>
+                  {CHAPTERS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label} {c.title}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ชื่อกิจกรรม</label>
+                <input className="input" value={activityName} onChange={e=>setActivityName(e.target.value)}
+                  placeholder="เช่น ตอบคำถาม, แบบทดสอบ" disabled={givenList.length>0}/>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,marginBottom:16,opacity:givenList.length>0?.55:1}}>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP เต็ม</label>
+                <input className="input" type="number" value={maxXpAmt} onChange={e=>setMaxXpAmt(e.target.value)} placeholder="เช่น 200" disabled={givenList.length>0}/>
+              </div>
+              <div>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ช่วงเวลา</label>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  {[["before","🟣 ก่อนกลางภาค"],["after","🔵 หลังกลางภาค"]].map(([v,l])=>(
+                    <button key={v} onClick={()=>setSelPhase(v)} disabled={givenList.length>0} className="btn"
+                      style={{background:selPhase===v?"rgba(232,188,85,.18)":"rgba(255,255,255,.05)",
+                        border:`1px solid ${selPhase===v?"rgba(232,188,85,.6)":"var(--border)"}`,
+                        color:selPhase===v?"var(--gold)":"var(--muted2)",
+                        borderRadius:6,padding:"10px 6px",fontSize:11,
+                        fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:.5}}>{l}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {activityName.trim()&&givenList.length>0&&(
+              <div style={{background:"rgba(94,200,126,.08)",border:"1px solid rgba(94,200,126,.3)",borderRadius:8,
+                padding:"10px 14px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
+                <span style={{fontSize:12,color:"var(--green)"}}>✓ ให้ไปแล้ว {givenList.length} จาก {filteredStudents.length} คน</span>
+                <span style={{fontSize:11,color:"var(--muted)"}}>เหลืออีก {notGivenList.length} คน</span>
+              </div>
+            )}
+
+            {givenList.length>0&&(
+              <div style={{marginBottom:14}}>
+                <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>คนที่ให้ไปแล้ว — กด ✕ เพื่อยกเลิกคืนเป็น "ยังไม่ได้คะแนน"</label>
+                <div style={{border:"1px solid var(--border)",borderRadius:8,overflow:"hidden"}}>
+                  {givenList.map((s:any,i:number)=>{const entry=givenEntry(s);return(
+                    <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",
+                      borderBottom:i<givenList.length-1?"1px solid rgba(212,168,67,.12)":"none"}}>
+                      <span style={{color:"var(--green)"}}>✓</span>
+                      <span style={{fontSize:16,flexShrink:0}}>{s.avatar}</span>
+                      <span style={{flex:1,fontSize:13,color:"var(--muted2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</span>
+                      <span className="mono" style={{fontSize:13,color:"var(--green)"}}>{entry?.xp} XP</span>
+                      <button onClick={()=>undoDuringSession(s.id)} title="ยกเลิกคืนสถานะ"
+                        style={{background:"transparent",border:"1px solid rgba(232,96,96,.4)",color:"var(--red)",
+                          borderRadius:4,padding:"2px 8px",fontSize:12,cursor:"pointer"}}>✕</button>
+                    </div>
+                  );})}
+                </div>
+              </div>
+            )}
+
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2}}>เลือกกลุ่มถัดไป ({selectedIds().length} คนที่เลือก)</label>
+              <span style={{fontSize:11,color:"var(--muted)"}}>เลือกคนก่อน แล้วกรอกคะแนนทีเดียวใส่ให้ทุกคนที่เลือก</span>
+            </div>
+            <div style={{maxHeight:280,overflowY:"auto",border:"1px solid var(--border)",borderRadius:8,marginBottom:10}}>
+              {notGivenList.map((s:any,i:number)=>{
+                const isSel=!!selected[s.id];
+                const val=perStuXp[s.id]??"";
+                return(
+                  <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",
+                    background:isSel?"rgba(232,188,85,.05)":"transparent",
+                    borderBottom:i<notGivenList.length-1?"1px solid rgba(212,168,67,.12)":"none"}}>
+                    <input type="checkbox" checked={isSel}
+                      onChange={()=>toggleSelect(s.id)}
+                      style={{width:15,height:15,accentColor:"#f0a0c0"}}/>
+                    <span style={{fontSize:16,flexShrink:0}}>{s.avatar}</span>
+                    <span style={{flex:1,fontSize:13,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</span>
+                    <input type="number" value={val} placeholder="—"
+                      onChange={e=>setPerStuXp((p:any)=>({...p,[s.id]:e.target.value}))}
+                      style={{width:56,background:"rgba(10,20,38,.8)",border:"1px solid rgba(232,188,85,.4)",
+                        color:"#f0a0c0",borderRadius:5,padding:"4px 8px",textAlign:"center",
+                        fontFamily:"'Share Tech Mono',monospace",fontSize:13,outline:"none"}}/>
+                  </div>
+                );
+              })}
+              {notGivenList.length===0&&<div style={{padding:16,textAlign:"center",fontSize:13,color:"var(--muted)"}}>ให้ครบทุกคนแล้ว 🎉</div>}
+            </div>
+
+            {selectedIds().length>0&&(
+              <div style={{display:"flex",gap:8,alignItems:"center",background:"rgba(232,188,85,.06)",
+                border:"1px solid rgba(232,188,85,.25)",borderRadius:8,padding:"10px 12px",marginBottom:12,flexWrap:"wrap"}}>
+                <span style={{fontSize:12,color:"var(--muted2)",whiteSpace:"nowrap"}}>ให้คะแนนคนที่เลือก ({selectedIds().length} คน):</span>
+                <input type="number" value={bulkFillValue} onChange={e=>setBulkFillValue(e.target.value)} placeholder="เช่น 90"
+                  style={{width:70,background:"rgba(10,20,38,.8)",border:"1px solid rgba(232,188,85,.5)",
+                    color:"#f0a0c0",borderRadius:5,padding:"6px 8px",textAlign:"center",
+                    fontFamily:"'Share Tech Mono',monospace",fontSize:14,outline:"none"}}/>
+                <button onClick={applyBulkFill} className="btn-ghost"
+                  style={{flex:1,fontSize:12,padding:"8px 4px",borderColor:"rgba(232,188,85,.5)",color:"#f0a0c0",minWidth:140}}>⬇️ ใส่ให้ทุกคนที่เลือก</button>
+              </div>
+            )}
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+              <button className="btn-ghost" onClick={()=>{const sel:any={};notGivenList.forEach((s:any)=>sel[s.id]=true);setSelected(sel);}} style={{fontSize:11,padding:"7px 4px"}}>☑️ เลือกที่เหลือทั้งหมด</button>
+              <button className="btn-ghost" onClick={()=>{setSelected({});setPerStuXp({});setBulkFillValue("");}} style={{fontSize:11,padding:"7px 4px"}}>⊘ ล้างที่เลือก</button>
+            </div>
+
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={doAdd}
+                style={{flex:2,fontSize:16,padding:"14px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+                <span>💾</span> บันทึกกลุ่มนี้ ({selectedIds().length} คน)
+              </button>
+              <button className="btn-outline" onClick={finishGroup} style={{flex:1,fontSize:14}}>✅ เสร็จสิ้น</button>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:14}}>XP ทุกนักเรียน</div>
+            {[...students].sort((a,b)=>getEffectiveXP(b,assignments)-getEffectiveXP(a,assignments)).map((s,i)=>{const sxp=getEffectiveXP(s,assignments);const r=getRank(sxp);return(
+              <div key={s.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>
+                <span style={{width:28,textAlign:"center",fontSize:14,color:"var(--muted)"}}>{i+1}</span>
+                <span style={{fontSize:28}}>{s.avatar}</span>
+                <span style={{flex:1,fontSize:14}}>{s.name}</span>
+                <div style={{width:110}}><XPBar xp={sxp} showLabel={false}/></div>
+                <div className="mono" style={{width:70,textAlign:"right",color:r.color}}>{sxp.toLocaleString()}</div>
+                <GradeTag xp={sxp}/>
+              </div>
+            );})}
+          </div>
+        </>
+      )}
+
+      {editEntry&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:400}}>
+            <div className="cond" style={{fontSize:22,color:"var(--gold)",letterSpacing:2,marginBottom:6}}>✏️ แก้ไข XP</div>
+            <div style={{color:"var(--muted2)",fontSize:13,marginBottom:16}}>{editEntry.studentName} · {editEntry.activityName}</div>
+            {editEntry.isNew&&<div style={{fontSize:11,color:"#eab308",marginBottom:14,padding:"8px 12px",background:"rgba(234,179,8,.1)",borderRadius:6}}>
+              💡 คนนี้ยังไม่เคยได้รับกิจกรรมนี้มาก่อน กรอกแล้วบันทึกจะเพิ่มให้ใหม่
+            </div>}
+            <div style={{marginBottom:20}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>XP ที่ได้</label>
+              <input className="input" type="number" min="0" value={editEntry.xp}
+                onChange={e=>setEditEntry({...editEntry,xp:e.target.value})} autoFocus/>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:6}}>= {editEntry.xp||0} XP ({xpToScore(Number(editEntry.xp)||0)} คะแนน) จากเต็ม {editEntry.maxXp} XP ({xpToScore(editEntry.maxXp)} คะแนน)</div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={saveEditEntry} style={{flex:1,fontSize:15,padding:12}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>setEditEntry(null)} style={{flex:1}}>ยกเลิก</button>
+            </div>
+            {!editEntry.isNew&&
+              <button onClick={deleteEditEntry} style={{width:"100%",marginTop:10,background:"transparent",
+                border:"1px solid rgba(232,96,96,.4)",color:"var(--red)",borderRadius:6,padding:"10px 0",
+                fontSize:13,cursor:"pointer"}}>🗑 ลบรายการนี้ (คืนเป็นยังไม่ได้คะแนน)</button>}
+          </div>
+        </div>
+      )}
+
+      {editAct&&(
+        <div className="overlay">
+          <div className="card card-gold" style={{width:"100%",maxWidth:480}}>
+            <div className="cond" style={{fontSize:22,color:"#f0a0c0",letterSpacing:2,marginBottom:20}}>✏️ แก้ไขกิจกรรม</div>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>บทเรียน</label>
+              <select className="input" value={editAct.newChapterId} onChange={e=>setEditAct({...editAct,newChapterId:e.target.value})}>
+                {CHAPTERS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label} {c.title}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ชื่อกิจกรรม</label>
+              <input className="input" value={editAct.newName} onChange={e=>setEditAct({...editAct,newName:e.target.value})}
+                placeholder="ชื่อกิจกรรม"/>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>คะแนนเต็ม</label>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8}}>
+                <input className="input" type="number" min="1"
+                  value={editAct.unit==="xp"?editAct.newMaxXp:xpToScore(editAct.newMaxXp)}
+                  onChange={e=>{const v=Number(e.target.value)||0;setEditAct({...editAct,newMaxXp:editAct.unit==="xp"?v:v*25});}}
+                  placeholder="เช่น 200"/>
+                <div style={{display:"flex",gap:4}}>
+                  {[["xp","XP"],["points","คะแนน"]].map(([u,l])=>(
+                    <button key={u} type="button" onClick={()=>setEditAct({...editAct,unit:u})}
+                      style={{background:editAct.unit===u?"rgba(232,188,85,.18)":"rgba(255,255,255,.05)",
+                        border:`1px solid ${editAct.unit===u?"rgba(232,188,85,.6)":"var(--border)"}`,
+                        color:editAct.unit===u?"var(--gold)":"var(--muted2)",borderRadius:6,padding:"0 12px",
+                        fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12}}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:6}}>= {editAct.newMaxXp||0} XP ({xpToScore(editAct.newMaxXp||0)} คะแนน) — จะปรับสัดส่วนคะแนนของทุกคนที่ได้กิจกรรมนี้ไปแล้วให้อัตโนมัติ</div>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:8}}>ช่วงเวลา</label>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                {[["before","🟣 ก่อนกลางภาค"],["after","🔵 หลังกลางภาค"]].map(([v,l])=>(
+                  <button key={v} onClick={()=>setEditAct({...editAct,newPhase:v})} className="btn"
+                    style={{background:editAct.newPhase===v?"rgba(232,188,85,.18)":"rgba(255,255,255,.05)",
+                      border:`1px solid ${editAct.newPhase===v?"rgba(232,188,85,.6)":"var(--border)"}`,
+                      color:editAct.newPhase===v?"var(--gold)":"var(--muted2)",
+                      borderRadius:6,padding:"10px 6px",fontSize:12,
+                      fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:.5}}>{l}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn btn-gold" onClick={saveEditActivity} style={{flex:1,fontSize:15,padding:12}}>💾 บันทึก</button>
+              <button className="btn-outline" onClick={()=>setEditAct(null)} style={{flex:1}}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {tab==="summary"&&(
+        <div>
+          {allActivities.length===0?(
+            <div className="card" style={{textAlign:"center",padding:48}}>
+              <div style={{fontSize:40,marginBottom:12}}>📊</div>
+              <div className="cond" style={{fontSize:20,color:"var(--muted)"}}>ยังไม่มีการให้คะแนน</div>
+            </div>
+          ):(
+            allActivities.map((act:any,ai)=>{
+              const sortedStudents=[...students].sort((a,b)=>b.xp-a.xp);
+              const totalGiven=Object.values(act.entries).reduce((s:number,e:any)=>s+(e.xp||0),0);
+              const receivedCount=Object.keys(act.entries).length;
+              return(
+                <div key={ai} className="card" style={{marginBottom:16,borderColor:"rgba(232,188,85,.35)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
+                    <div style={{flex:1}}>
+                      <div className="cond" style={{fontSize:20,fontWeight:700,color:"#f0a0c0"}}>{act.name}</div>
+                      <div style={{display:"flex",gap:8,marginTop:6,flexWrap:"wrap",alignItems:"center"}}>
+                        <span className="badge" style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)"}}>✓ ได้รับ {receivedCount} คน</span>
+                        <span className="badge" style={{background:"rgba(232,96,96,.1)",border:"1px solid rgba(232,96,96,.28)",color:"var(--red)"}}>— ยังไม่ได้ {students.length-receivedCount} คน</span>
+                        <span className="badge" style={{background:act.phase==="after"?"rgba(244,114,182,.14)":"rgba(167,139,250,.14)",border:`1px solid ${act.phase==="after"?"rgba(244,114,182,.4)":"rgba(167,139,250,.4)"}`,color:act.phase==="after"?"#f472b6":"#a78bfa"}}>{act.phase==="after"?"🔵 หลังกลางภาค":"🟣 ก่อนกลางภาค"}</span>
+                        <span className="mono" style={{fontSize:11,color:"#f0a0c0",padding:"3px 8px"}}>รวม {totalGiven.toLocaleString()} XP ({xpToScore(totalGiven)} คะแนน)</span>
+                        <span className="mono" style={{fontSize:11,color:"var(--muted)",padding:"3px 8px"}}>เต็มคนละ {act.maxXp.toLocaleString()} XP ({xpToScore(act.maxXp)} คะแนน)</span>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8,flexShrink:0}}>
+                      <button className="btn-ghost" onClick={()=>setEditAct({oldName:act.name,newName:act.name,newChapterId:act.chapterId||"CH1",newMaxXp:act.maxXp||"",oldMaxXp:act.maxXp||0,newPhase:act.phase||"before",unit:"xp"})}
+                        style={{fontSize:12,padding:"6px 14px"}}>✏️ แก้ไข</button>
+                      <button className="btn-ghost" onClick={()=>deleteActivity(act.name)}
+                        style={{fontSize:12,padding:"6px 14px",borderColor:"rgba(232,96,96,.4)",color:"var(--red)"}}>🗑 ลบ</button>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
+                    {sortedStudents.map(s=>{
+                      const entry=act.entries[s.id];
+                      return(
+                        <div key={s.id} onClick={()=>setEditEntry({activityName:act.name,studentId:s.id,studentName:s.name,xp:entry?entry.xp:act.maxXp,maxXp:act.maxXp,isNew:!entry})}
+                          style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",cursor:"pointer",
+                          background:entry?"rgba(94,200,126,.07)":"rgba(232,96,96,.05)",
+                          border:`1px solid ${entry?"rgba(94,200,126,.25)":"rgba(232,96,96,.15)"}`,
+                          borderRadius:7,transition:"filter .15s"}}
+                          onMouseEnter={e=>(e.currentTarget as HTMLElement).style.filter="brightness(1.3)"}
+                          onMouseLeave={e=>(e.currentTarget as HTMLElement).style.filter="brightness(1)"}>
+                          <span style={{fontSize:20,flexShrink:0}}>{s.avatar}</span>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:12,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name.split(" ").slice(1).join(" ")}</div>
+                            {entry?<div className="mono" style={{fontSize:13,color:"#f0a0c0",fontWeight:700}}>+{entry.xp} XP ({xpToScore(entry.xp)} คะแนน)</div>
+                                  :<div style={{fontSize:11,color:"var(--muted)"}}>ยังไม่ได้รับ</div>}
+                          </div>
+                          <span style={{fontSize:12,color:"var(--muted)",flexShrink:0}}>✏️</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TEACHER: AIRDROP
+// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// TEACHER: GRADES SUMMARY + PRE/POST TEST
+// ─────────────────────────────────────────────
+function TeacherGrades({students,setStudents,assignments}){
+  const [tabG,setTabG]=useState("score");
+  useEffect(()=>{window.scrollTo(0,0);},[tabG]);
+  const [maxPP,setMaxPP]=useState(20);
+  // คะแนน pre/post-test เก็บตรงในตัวนักเรียนแต่ละคน (student.pretest/posttest) แล้วบันทึกทันทีที่แก้
+  // เพื่อให้รอดจากการสลับแท็บ/รีเฟรชหน้า เหมือนข้อมูลอื่นๆ ในระบบ (ไม่ใช่ state ชั่วคราวเหมือนเดิม)
+  function getPP(st:any){return{pre:st.pretest??null,post:st.posttest??null};}
+  function setPP(studentId:string,field:"pretest"|"posttest",value:number|null){
+    setStudents((prev:any)=>prev.map((s:any)=>s.id===studentId?{...s,[field]:value}:s));
+  }
+  const [saved,setSaved]=useState(false);
+  const [editMid,setEditMid]=useState<any>(()=>{
+    const m:any={};students.forEach((s:any)=>{m[s.id]=s.midterm!==null&&s.midterm!==undefined?String(s.midterm):"";});return m;
+  });
+  const [editFinal,setEditFinal]=useState<any>(()=>{
+    const m:any={};students.forEach((s:any)=>{m[s.id]=s.final!==null&&s.final!==undefined?String(s.final):"";});return m;
+  });
+
+  function xpToScore(xp:number,max:number){return Math.min(max,Math.round(xp/25));}
+  function xpByPhase(s:any,phase:string){
+    const fromAssign=(assignments||[]).reduce((sum:number,a:any)=>{
+      if((a.phase||"before")!==phase)return sum;
+      const sub=s.submissions?.[a.id];
+      return sum+(sub?.graded?sub.xpEarned||0:0);
+    },0);
+    const fromLog=(s.xpLog||[]).reduce((sum:number,l:any)=>(l.phase||"before")===phase?sum+(l.xp||0):sum,0);
+    return fromAssign+fromLog;
+  }
+  function getS1(s:any){return xpToScore(xpByPhase(s,"before"),35);}
+  function getS2(s:any){return xpToScore(xpByPhase(s,"after"),35);}
+  function getTotal(s:any){
+    if(s.midterm===null||s.midterm===undefined||s.final===null||s.final===undefined)return null;
+    return getS1(s)+(s.midterm||0)+getS2(s)+(s.final||0);
+  }
+  function getGrade(total:number|null){
+    if(total===null)return null;
+    if(total>=80)return"4.0";if(total>=75)return"3.5";if(total>=70)return"3.0";
+    if(total>=65)return"2.5";if(total>=60)return"2.0";if(total>=55)return"1.5";
+    if(total>=50)return"1.0";return"0";
+  }
+  function gradeColor(g:string|null){
+    if(!g)return"var(--muted)";
+    const n=parseFloat(g);
+    if(n>=3.5)return"var(--cyan)";if(n>=2.5)return"#f0a0c0";if(n>=1.5)return"var(--orange)";return"var(--red)";
+  }
+  function getPPGroup(score:number){
+    const p=score/maxPP;
+    if(p>=2/3)return{key:"g",bg:"#22c55e"};
+    if(p>=1/3)return{key:"m",bg:"#eab308"};
+    return{key:"w",bg:"#ef4444"};
+  }
+  function saveAll(){
+    setStudents((prev:any)=>prev.map((s:any)=>({
+      ...s,
+      midterm:editMid[s.id]!==""?Number(editMid[s.id]):null,
+      final:editFinal[s.id]!==""?Number(editFinal[s.id]):null,
+    })));
+    setSaved(true);setTimeout(()=>setSaved(false),3000);
+  }
+
+  const [selRoomG,setSelRoomG]=useState("all");
+  const filteredG=selRoomG==="all"?students:students.filter((s:any)=>s.room===selRoomG);
+  const sorted=[...filteredG].sort((a:any,b:any)=>(getTotal(b)??-1)-(getTotal(a)??-1));
+  const withGrades=filteredG.filter((s:any)=>getTotal(s)!==null);
+  const passing=withGrades.filter((s:any)=>parseFloat(getGrade(getTotal(s))||"0")>0).length;
+  const avg=withGrades.length>0?Math.round(withGrades.reduce((a:number,s:any)=>a+(getTotal(s)||0),0)/withGrades.length):null;
+  const gradeCounts:any={"4.0":0,"3.5":0,"3.0":0,"2.5":0,"2.0":0,"1.5":0,"1.0":0,"0":0};
+  students.forEach((s:any)=>{const g=getGrade(getTotal(s));if(g)gradeCounts[g]++;});
+
+  useEffect(()=>{
+    if(typeof Chart==="undefined")return;
+    ["gradeDistChart","scoreBreakChart","ppGroupBar"].forEach(id=>{
+      const c=document.getElementById(id) as HTMLCanvasElement;
+      if(c&&(c as any)._ci){(c as any)._ci.destroy();(c as any)._ci=null;}
+    });
+    if(tabG==="score"){
+      Chart.defaults.color="#9aacbf";
+      const gc=document.getElementById("gradeDistChart") as HTMLCanvasElement;
+      if(gc){
+        const gLabels=Object.keys(gradeCounts);
+        const gColors=gLabels.map(g=>{const n=parseFloat(g);return n>=3.5?"#4ecaae":n>=2.5?"#f5cc70":n>=1.5?"#e88c4a":"#e86060";});
+        (gc as any)._ci=new Chart(gc,{
+          type:"doughnut",
+          data:{labels:gLabels,datasets:[{data:Object.values(gradeCounts),backgroundColor:gColors,borderWidth:3,borderColor:"rgba(15,30,53,.9)"}]},
+          options:{responsive:true,maintainAspectRatio:false,
+            plugins:{
+              legend:{display:true,position:"bottom" as const,labels:{color:"#9aacbf",font:{size:10},padding:8,boxWidth:10}},
+              tooltip:{callbacks:{label:(c:any)=>c.label+": "+c.raw+" คน ("+(Math.round(c.raw/students.length*100))+"%)"}},
+              datalabels:{color:"#fff",font:{weight:"bold" as const,size:11},
+                formatter:(val:any)=>val>0?(val+" คน "+(Math.round(val/students.length*100))+"%"):"" ,
+                display:(ctx:any)=>ctx.dataset.data[ctx.dataIndex]>0}
+            }
+          }
+        });
+      }
+      const sc=document.getElementById("scoreBreakChart") as HTMLCanvasElement;
+      if(sc){
+        const top8=sorted.slice(0,8);
+        (sc as any)._ci=new Chart(sc,{
+          type:"bar",
+          data:{
+            labels:top8.map((s:any)=>s.name.split(" ").slice(-1)[0]),
+            datasets:[
+              {label:"เก็บก่อนกลาง",data:top8.map((s:any)=>getS1(s)),backgroundColor:"#185FA5",borderRadius:2,stack:"a"},
+              {label:"กลางภาค",data:top8.map((s:any)=>s.midterm||0),backgroundColor:"#5DCAA5",borderRadius:2,stack:"a"},
+              {label:"เก็บหลังกลาง",data:top8.map((s:any)=>getS2(s)),backgroundColor:"#f472b6",borderRadius:2,stack:"a"},
+              {label:"ปลายภาค",data:top8.map((s:any)=>s.final||0),backgroundColor:"#e88c4a",borderRadius:2,stack:"a"},
+            ]
+          },
+          options:{responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{display:false},datalabels:{display:false}},
+            scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,max:100,grid:{color:"rgba(232,188,85,.08)"}}}}
+        });
+      }
+    }
+    if(tabG==="prepost"){
+      Chart.defaults.color="#555";
+      const gc=document.getElementById("ppGroupBar") as HTMLCanvasElement;
+      if(!gc)return;
+      const keys=["g","m","w"];
+      const pc=[0,0,0],qc=[0,0,0];
+      students.forEach((st:any)=>{
+        const pp=getPP(st);
+        if(pp.pre!==null&&pp.pre!==undefined)pc[keys.indexOf(getPPGroup(pp.pre).key)]++;
+        if(pp.post!==null&&pp.post!==undefined)qc[keys.indexOf(getPPGroup(pp.post).key)]++;
+      });
+      (gc as any)._ci=new Chart(gc,{
+        type:"bar",
+        data:{labels:["เก่ง","กลาง","อ่อน"],datasets:[
+          {label:"Pre-test",data:pc,backgroundColor:"#7c3aed",borderRadius:4},
+          {label:"Post-test",data:qc,backgroundColor:"#0ea5e9",borderRadius:4},
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:true,labels:{color:"#555",font:{size:11}}},datalabels:{display:false}},
+          scales:{x:{grid:{display:false},ticks:{color:"#555"}},y:{beginAtZero:true,ticks:{stepSize:1,color:"#555"},max:students.length,grid:{color:"rgba(0,0,0,.06)"}}},
+          animation:{onComplete:function(e:any){
+            const ctx=e.chart.ctx;
+            ctx.font="bold 12px 'Share Tech Mono',monospace";
+            ctx.fillStyle="#333";ctx.textAlign="center";ctx.textBaseline="bottom";
+            const dsTotals=e.chart.data.datasets.map((ds:any)=>ds.data.reduce((s:number,v:number)=>s+v,0));
+            e.chart.data.datasets.forEach(function(ds:any,di:number){
+              e.chart.getDatasetMeta(di).data.forEach(function(bar:any,bi:number){
+                const v=ds.data[bi];
+                const total=dsTotals[di];
+                const pct=total>0?Math.round(v/total*100):0;
+                if(v>0)ctx.fillText(`${v} (${pct}%)`,bar.x,bar.y-4);
+              });
+            });
+          }}
+        }
+      });
+    }
+  },[tabG,students,editMid,editFinal,maxPP]);
+
+  const tabStyleG=(t:string)=>({
+    background:tabG===t?"rgba(232,188,85,.12)":"transparent",
+    border:"none",borderBottom:tabG===t?"2px solid var(--gold)":"2px solid transparent",
+    color:tabG===t?"#f0a0c0":"var(--muted2)",
+    padding:"10px 22px",cursor:"pointer",
+    fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,transition:"all .2s"
+  } as React.CSSProperties);
+
+  // ── Pre/Post summary calc ──
+  const ppStudents=students.filter((st:any)=>{const p=getPP(st);return p&&p.pre!==null&&p.post!==null;});
+  let ppUp=0,ppDown=0,ppSame=0;
+  ppStudents.forEach((st:any)=>{
+    const p=getPP(st);
+    const pk=getPPGroup(p.pre).key,qk=getPPGroup(p.post).key;
+    if(pk===qk)ppSame++;
+    else if((pk==="w"&&qk!=="w")||(pk==="m"&&qk==="g"))ppUp++;
+    else ppDown++;
+  });
+  const ppTotal=ppStudents.length;
+  const ppPct=(n:number)=>ppTotal?Math.round(n/ppTotal*1000)/10:0;
+
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:1000,margin:"0 auto"}}>
+      <div style={{display:"flex",borderBottom:"1px solid var(--border)",marginBottom:20}}>
+        <button style={tabStyleG("score")} onClick={()=>setTabG("score")}>📊 คะแนน</button>
+        <button style={tabStyleG("prepost")} onClick={()=>setTabG("prepost")}>👥 Pre/Post-test</button>
+      </div>
+
+      {/* Room filter */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {[{id:"all",label:"🌸 ทุกห้อง"},{id:"r1",label:"🌸 ม.3/1"},{id:"r2",label:"🌿 ม.3/2"}].map(r=>(
+          <button key={r.id} onClick={()=>setSelRoomG(r.id)} className="btn"
+            style={{background:selRoomG===r.id?"rgba(240,160,192,.2)":"rgba(255,255,255,.04)",
+              border:`1px solid ${selRoomG===r.id?"rgba(240,160,192,.5)":"var(--border)"}`,
+              color:selRoomG===r.id?"#f0a0c0":"var(--muted2)",borderRadius:8,padding:"8px 16px",
+              fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{r.label}</button>
+        ))}
+      </div>
+      {tabG==="score"&&(
+        <div>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:16}}>📊 สรุปคะแนนรวม</div>
+          {saved&&<div style={{background:"rgba(94,200,126,.14)",border:"1px solid rgba(94,200,126,.4)",borderRadius:8,padding:"12px 18px",color:"var(--green)",fontSize:14,marginBottom:16,textAlign:"center"}}>✅ บันทึกแล้ว!</div>}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:12,marginBottom:20}}>
+            {[{icon:"👥",label:"นักเรียน",val:students.length,c:"var(--cyan)"},
+              {icon:"✅",label:"ผ่านเกณฑ์",val:passing,c:"var(--green)"},
+              {icon:"❌",label:"ไม่ผ่าน",val:withGrades.length-passing,c:"var(--red)"},
+              {icon:"📊",label:"คะแนนเฉลี่ย",val:avg!==null?avg+"":"รอกรอก",c:"#f0a0c0"},
+            ].map((s,i)=>(
+              <div key={i} className="card" style={{textAlign:"center"}}>
+                <div style={{fontSize:22,marginBottom:4}}>{s.icon}</div>
+                <div className="cond" style={{fontSize:typeof s.val==="number"?30:16,fontWeight:900,color:s.c,lineHeight:typeof s.val==="number"?1:1.3}}>{s.val}</div>
+                <div style={{fontSize:11,color:"var(--muted)",marginTop:2}}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{marginBottom:20,overflowX:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
+              <div className="cond" style={{fontSize:18,color:"#f0a0c0"}}>ตารางคะแนนรายบุคคล</div>
+              <button className="btn btn-gold" onClick={saveAll} style={{fontSize:14,padding:"10px 24px"}}>💾 บันทึกคะแนน</button>
+            </div>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:640}}>
+              <thead>
+                <tr style={{borderBottom:"1px solid var(--border)"}}>
+                  {[{h:"ชื่อ",a:"left"},{h:"เก็บก่อนกลาง /35",a:"center"},{h:"กลางภาค /15",a:"center"},{h:"เก็บหลังกลาง /35",a:"center"},{h:"ปลายภาค /15",a:"center"},{h:"รวม/100",a:"center"},{h:"เกรด",a:"center"}].map(({h,a},i)=>(
+                    <th key={i} style={{padding:"8px 12px",textAlign:a as any,fontSize:11,color:"var(--muted)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((s:any)=>{
+                  const s1=getS1(s),s2=getS2(s),total=getTotal(s),grade=getGrade(total);
+                  return(
+                    <tr key={s.id} style={{borderBottom:"1px solid var(--border)"}}>
+                      <td style={{padding:"10px 12px",fontSize:13,textAlign:"left"}}>
+                        <span style={{display:"inline-flex",alignItems:"center",gap:8,whiteSpace:"nowrap"}}>
+                          <span style={{fontSize:20}}>{s.avatar}</span><span>{s.name}</span>
+                        </span>
+                      </td>
+                      <td style={{textAlign:"center",padding:"10px 8px"}}>
+                        <span className="mono" style={{fontSize:15,fontWeight:700,color:"#185FA5"}}>{s1}</span>
+                      </td>
+                      <td style={{textAlign:"center",padding:"8px"}}>
+                        <input type="number" min="0" max="15" value={editMid[s.id]} placeholder="—"
+                          onChange={e=>setEditMid((p:any)=>({...p,[s.id]:e.target.value}))}
+                          style={{width:56,background:"rgba(14,26,43,.8)",border:"1px solid rgba(94,200,126,.4)",color:"#5DCAA5",borderRadius:5,padding:"5px 6px",fontFamily:"'Share Tech Mono',monospace",fontSize:14,textAlign:"center",outline:"none"}}/>
+                      </td>
+                      <td style={{textAlign:"center",padding:"10px 8px"}}>
+                        <span className="mono" style={{fontSize:15,fontWeight:700,color:"#f472b6"}}>{s2}</span>
+                      </td>
+                      <td style={{textAlign:"center",padding:"8px"}}>
+                        <input type="number" min="0" max="15" value={editFinal[s.id]} placeholder="—"
+                          onChange={e=>setEditFinal((p:any)=>({...p,[s.id]:e.target.value}))}
+                          style={{width:56,background:"rgba(14,26,43,.8)",border:"1px solid rgba(232,140,74,.4)",color:"#e88c4a",borderRadius:5,padding:"5px 6px",fontFamily:"'Share Tech Mono',monospace",fontSize:14,textAlign:"center",outline:"none"}}/>
+                      </td>
+                      <td style={{textAlign:"center",padding:"10px 8px"}}>
+                        {total!==null?<span className="mono" style={{fontSize:16,fontWeight:700,color:"#f0a0c0"}}>{total}</span>:<span style={{fontSize:11,color:"var(--muted)"}}>รอกรอก</span>}
+                      </td>
+                      <td style={{textAlign:"center",padding:"10px 8px"}}>
+                        <span className="cond" style={{fontSize:22,fontWeight:900,color:gradeColor(grade)}}>{grade??"—"}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+            <div className="card">
+              <div className="cond" style={{fontSize:16,color:"#f0a0c0",marginBottom:12}}>กราฟสรุปเกรด</div>
+              <div style={{position:"relative",height:220}}><canvas id="gradeDistChart"/></div>
+            </div>
+            <div className="card">
+              <div className="cond" style={{fontSize:16,color:"#f0a0c0",marginBottom:8}}>คะแนนรายส่วน (8 อันดับแรก)</div>
+              <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:10,marginBottom:8}}>
+                {[["#185FA5","เก็บก่อนกลาง"],["#5DCAA5","กลางภาค"],["#f472b6","เก็บหลังกลาง"],["#e88c4a","ปลายภาค"]].map(([c,l])=>(
+                  <span key={l}><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:c,marginRight:3}}></span>{l}</span>
+                ))}
+              </div>
+              <div style={{position:"relative",height:200}}><canvas id="scoreBreakChart"/></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tabG==="prepost"&&(
+        <div>
+          <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:16}}>👥 วิเคราะห์กลุ่ม PRE/POST TEST</div>
+          <div className="card" style={{marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",gap:24,flexWrap:"wrap"}}>
+              <div>
+                <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:6}}>คะแนนเต็ม</div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input type="number" value={maxPP} min={1} max={100} onChange={e=>setMaxPP(Math.max(1,+e.target.value||20))}
+                    style={{width:64,background:"rgba(14,26,43,.8)",border:"1px solid rgba(212,168,67,.3)",color:"#f0a0c0",borderRadius:5,padding:"5px 8px",fontSize:14,textAlign:"center",outline:"none"}}/>
+                  <span style={{fontSize:13,color:"var(--muted)"}}>คะแนน</span>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"center",fontSize:12,color:"var(--muted)"}}>
+                {(()=>{
+                  const t1=Math.ceil(maxPP/3);
+                  const t2=Math.ceil(maxPP*2/3);
+                  return[
+                    {c:"#22c55e",l:"เก่ง",  s:`${t2}–${maxPP} คะแนน`,r:`≥${Math.round(t2/maxPP*100)}%`},
+                    {c:"#eab308",l:"กลาง",  s:`${t1}–${t2-1} คะแนน`,r:`${Math.round(t1/maxPP*100)}–${Math.round((t2-1)/maxPP*100)}%`},
+                    {c:"#ef4444",l:"อ่อน",  s:`1–${t1-1} คะแนน`,r:`<${Math.round(t1/maxPP*100)}%`},
+                  ].map(({c,l,s,r})=>(
+                    <span key={l} style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{width:14,height:14,borderRadius:"50%",background:c,display:"inline-block"}}></span>
+                      <span style={{color:"var(--text)"}}>{l}</span>
+                      <span style={{color:"var(--muted)"}}>{s} ({r})</span>
+                    </span>
+                  ));
+                })()}
+              </div>
+            </div>
+          </div>
+          <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:10,padding:"16px 20px",marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexWrap:"wrap",gap:8}}>
+              <div className="cond" style={{fontSize:20,color:"#333"}}>ตารางคะแนน Pre-test / Post-test</div>
+              <div style={{fontSize:12,color:"#888"}}>แก้ไขคะแนนได้โดยตรง</div>
+            </div>
+            <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:500}}>
+              <thead>
+                <tr style={{background:"#f8f8f8"}}>
+                  {["ชื่อ","Pre-test","Post-test","เปลี่ยนแปลง"].map((h,i)=>(
+                    <th key={i} style={{padding:"10px 12px",textAlign:i===0?"left":"center" as any,fontSize:12,fontWeight:600,borderBottom:"2px solid #e5e5e5",color:"#555"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredG.map((st:any)=>{
+                  const pp=getPP(st);
+                  const pg=pp.pre!==null?getPPGroup(pp.pre):null;
+                  const qg=pp.post!==null?getPPGroup(pp.post):null;
+                  const same=pg&&qg&&pg.key===qg.key;
+                  const up=pg&&qg&&((pg.key==="w"&&qg.key!=="w")||(pg.key==="m"&&qg.key==="g"));
+                  const arr=same?"→":up?"⬆":"⬇";
+                  const abg=same?"#f3f4f6":up?"#f0fdf4":"#fff1f2";
+                  const aborder=same?"none":up?"1px solid #bbf7d0":"1px solid #fecdd3";
+                  return(
+                    <tr key={st.id} style={{borderBottom:"1px solid #f0f0f0"}}>
+                      <td style={{padding:"10px 12px",color:"#222",fontSize:13,textAlign:"left"}}><span style={{display:"inline-flex",alignItems:"center",gap:8,whiteSpace:"nowrap"}}><span>{st.avatar}</span><span>{st.name}</span></span></td>
+                      <td style={{padding:"8px",textAlign:"center"}}>
+                        <div style={{display:"inline-flex",alignItems:"center",gap:6}}>
+                          {pg&&<div style={{width:14,height:14,borderRadius:"50%",background:pg.bg,flexShrink:0}}></div>}
+                          <input type="number" min={0} max={maxPP} value={pp.pre??""} placeholder="—"
+                            onChange={e=>{const v=e.target.value===""?null:Math.min(maxPP,Math.max(0,+e.target.value));setPP(st.id,"pretest",v);}}
+                            style={{width:52,border:"1px solid #d1d5db",borderRadius:5,padding:"4px 6px",fontSize:13,textAlign:"center",color:"#222",background:"#fff",outline:"none"}}/>
+                        </div>
+                      </td>
+                      <td style={{padding:"8px",textAlign:"center"}}>
+                        <div style={{display:"inline-flex",alignItems:"center",gap:6}}>
+                          {qg&&<div style={{width:14,height:14,borderRadius:"50%",background:qg.bg,flexShrink:0}}></div>}
+                          <input type="number" min={0} max={maxPP} value={pp.post??""} placeholder="—"
+                            onChange={e=>{const v=e.target.value===""?null:Math.min(maxPP,Math.max(0,+e.target.value));setPP(st.id,"posttest",v);}}
+                            style={{width:52,border:"1px solid #d1d5db",borderRadius:5,padding:"4px 6px",fontSize:13,textAlign:"center",color:"#222",background:"#fff",outline:"none"}}/>
+                        </div>
+                      </td>
+                      <td style={{padding:"8px",textAlign:"center"}}>
+                        {(pg&&qg)?(()=>{
+                          const status=same?{label:"คงเดิม",c:"#9ca3af",bg:"#f3f4f6"}:up?{label:"ดีขึ้น",c:"#22c55e",bg:"#f0fdf4"}:{label:"ลดลง",c:"#ef4444",bg:"#fff1f2"};
+                          return(
+                            <div style={{display:"inline-flex",alignItems:"center",gap:8}}>
+                              <span style={{display:"inline-flex",alignItems:"center",gap:5}}>
+                                <span style={{width:8,height:8,borderRadius:"50%",background:pg.bg,display:"inline-block"}}></span>
+                                <span style={{width:14,height:1.5,background:"#d1d5db",display:"inline-block"}}></span>
+                                <span style={{width:8,height:8,borderRadius:"50%",background:qg.bg,display:"inline-block"}}></span>
+                              </span>
+                              <span style={{display:"inline-flex",alignItems:"center",borderLeft:`3px solid ${status.c}`,background:status.bg,borderRadius:"0 5px 5px 0",padding:"4px 10px",fontSize:12,color:"#333"}}>{status.label}</span>
+                            </div>
+                          );
+                        })():<span style={{fontSize:11,color:"#999"}}>รอกรอก</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr",gap:16}}>
+            <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:10,padding:"16px 20px"}}>
+              <div className="cond" style={{fontSize:18,color:"#333",marginBottom:8}}>จำนวนนักเรียนในแต่ละกลุ่ม</div>
+              <div style={{display:"flex",gap:16,marginBottom:10,fontSize:11,color:"#555"}}>
+                <span><span style={{display:"inline-block",width:10,height:10,borderRadius:2,background:"#7c3aed",marginRight:3}}></span>Pre-test</span>
+                <span><span style={{display:"inline-block",width:10,height:10,borderRadius:2,background:"#0ea5e9",marginRight:3}}></span>Post-test</span>
+              </div>
+              <div style={{height:200,position:"relative"}}><canvas id="ppGroupBar"/></div>
+            </div>
+            <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:10,padding:"16px 20px"}}>
+              <div className="cond" style={{fontSize:18,color:"#333",marginBottom:14}}>สรุปการเปลี่ยนแปลง</div>
+              <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+                {[{arr:"⬆",ac:"#16a34a",bg:"#f0fdf4",border:"1px solid #bbf7d0",n:ppUp,label:"พัฒนา เลื่อนกลุ่มสูงขึ้น"},
+                  {arr:"➡",ac:"#92400e",bg:"#fefce8",border:"1px solid #fde68a",n:ppSame,label:"อยู่กลุ่มเดิม"},
+                  {arr:"⬇",ac:"#dc2626",bg:"#fff1f2",border:"1px solid #fecdd3",n:ppDown,label:"เลื่อนกลุ่มต่ำลง"},
+                ].map((r,i)=>(
+                  <div key={i} style={{background:r.bg,border:r.border,borderRadius:8,padding:"10px 14px",display:"flex",alignItems:"center",gap:12}}>
+                    <span style={{fontSize:18,fontWeight:900,color:r.ac,width:22,textAlign:"center",display:"inline-block",flexShrink:0}}>{r.arr}</span>
+                    <div>
+                      <div className="cond" style={{fontSize:20,color:r.ac}}>{r.n} คน <span style={{fontSize:13}}>({ppPct(r.n)}%)</span></div>
+                      <div style={{fontSize:11,color:"#555"}}>{r.label}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {ppTotal>0&&(()=>{
+                const u2=Math.round(ppUp/ppTotal*100),s2=Math.round(ppSame/ppTotal*100),d2=100-u2-s2;
+                return(
+                  <>
+                    <div style={{fontSize:10,color:"#888",marginBottom:6}}>ร้อยละรวม</div>
+                    <div style={{display:"flex",height:20,borderRadius:10,overflow:"hidden",background:"#f3f4f6",marginBottom:6}}>
+                      {u2>0&&<div style={{width:u2+"%",background:"#22c55e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff"}}>{u2}%</div>}
+                      {s2>0&&<div style={{width:s2+"%",background:"#eab308",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff"}}>{s2}%</div>}
+                      {d2>0&&<div style={{width:d2+"%",background:"#ef4444",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff"}}>{d2}%</div>}
+                    </div>
+                    <div style={{display:"flex",gap:12,fontSize:10,color:"#555"}}>
+                      <span style={{color:"#22c55e"}}>■ พัฒนา {u2}%</span>
+                      <span style={{color:"#eab308"}}>■ เดิม {s2}%</span>
+                      <span style={{color:"#ef4444"}}>■ ลดลง {d2}%</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TeacherAirdrop({students,setPendingAirdrop,setStudents}){
+  const DEFAULT_POOL=[
+    {id:"r1",name:"AWM Sniper Rifle",icon:"🔫",rarity:"LEGENDARY",color:"#f5cc70"},
+    {id:"r2",name:"Level 3 Helmet",icon:"⛑️",rarity:"EPIC",color:"#a569bd"},
+    {id:"r3",name:"Ghillie Suit",icon:"🥷",rarity:"EPIC",color:"#a569bd"},
+    {id:"r4",name:"Adrenaline Syringe",icon:"💉",rarity:"RARE",color:"#4ecaae"},
+    {id:"r5",name:"First Aid Kit",icon:"🩺",rarity:"RARE",color:"#4ecaae"},
+    {id:"r6",name:"Scope 4x",icon:"🔭",rarity:"UNCOMMON",color:"#7de8a0"},
+    {id:"r7",name:"Energy Drink",icon:"🥤",rarity:"COMMON",color:"#7b8fe0"},
+    {id:"r8",name:"Bandage Pack",icon:"🩹",rarity:"COMMON",color:"#7b8fe0"},
+  ];
+  const RARITY_COLORS={LEGENDARY:"#f5cc70",EPIC:"#a569bd",RARE:"#4ecaae",UNCOMMON:"#7de8a0",CUSTOM:"#e88c4a",COMMON:"#7b8fe0"};
+  const [tabAir,setTabAir]=useState("roll"); // "roll" | "history"
+  const [pool,setPool]=useState(DEFAULT_POOL);
+  const [showPoolEditor,setShowPoolEditor]=useState(false);
+  const [addForm,setAddForm]=useState({name:"",icon:"🎁",rarity:"CUSTOM"});
+  const [poolMsg,setPoolMsg]=useState(null);
+  const [eventFilter,setEventFilter]=useState("all");
+  const [selStu,setSelStu]=useState("");
+  const [rolling,setRolling]=useState(false);
+  const [rollIdx,setRollIdx]=useState(0);
+  const [result,setResult]=useState(null);
+  const [note,setNote]=useState("");
+  const [sent,setSent]=useState(null);
+  const timerRef=useRef<any>(null);
+
+  const EVENT_FILTERS=[
+    {id:"all",label:"👥",title:"ทุกคน",desc:"สุ่มให้ใครก็ได้"},
+    {id:"no_drop",label:"📦",title:"ยังไม่เคยได้",desc:"inventory ว่าง"},
+    {id:"low_xp",label:"⬇️",title:"XP ต่ำสุด",desc:"XP น้อยสุด"},
+    {id:"top",label:"👑",title:"XP สูงสุด",desc:"อันดับ 1"},
+  ];
+
+  function getFiltered(){
+    switch(eventFilter){
+      case "no_drop": return students.filter(s=>s.inventory.length===0);
+      case "low_xp":  {const mn=Math.min(...students.map(s=>s.xp));return students.filter(s=>s.xp===mn);}
+      case "top":     {const mx=Math.max(...students.map(s=>s.xp));return students.filter(s=>s.xp===mx);}
+      default:        return students;
+    }
+  }
+  const filtered=getFiltered();
+
+  function addReward(){
+    if(!addForm.name.trim()){setPoolMsg("กรุณาใส่ชื่อรางวัล");return;}
+    const color=RARITY_COLORS[addForm.rarity]||"#7b8fe0";
+    setPool(p=>[...p,{id:"c"+Date.now(),name:addForm.name.trim(),icon:addForm.icon||"🎁",rarity:addForm.rarity,color}]);
+    setAddForm({name:"",icon:"🎁",rarity:"CUSTOM"});
+    setPoolMsg("✅ เพิ่มสำเร็จ!");setTimeout(()=>setPoolMsg(null),2000);
+  }
+
+  function startRoll(){
+    if(!selStu||pool.length===0)return;
+    setResult(null);setRolling(true);setNote("");
+    let c=0;timerRef.current=setInterval(()=>{
+      setRollIdx(Math.floor(Math.random()*pool.length));c++;
+      if(c>=28){clearInterval(timerRef.current);setResult(pool[Math.floor(Math.random()*pool.length)]);setRolling(false);}
+    },70);
+  }
+  function send(){
+    if(!selStu||!result)return;
+    const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
+    setPendingAirdrop({...result,targetStudentId:selStu,receivedAt:today,note});
+    const s=students.find(x=>x.id===selStu);
+    setSent(`📦 ส่ง "${result.name}" ให้ ${s?.name} แล้ว!`);
+    setTimeout(()=>setSent(null),4000);setResult(null);setSelStu("");setNote("");
+  }
+
+  // รวม inventory ทุกคนเป็นประวัติ
+  const allHistory=students.flatMap(s=>(s.inventory||[]).map((it:any,idx:number)=>({...it,studentId:s.id,studentName:s.name,studentAvatar:s.avatar,idx})))
+    .sort((a:any,b:any)=>a.receivedAt>b.receivedAt?-1:1);
+
+  function removeAirdropHistory(studentId:string,idx:number){
+    if(!window.confirm("ลบ Airdrop นี้ออกจาก inventory ของนักเรียน?"))return;
+    setStudents(prev=>{
+      const updated=prev.map(s=>s.id===studentId?{...s,inventory:s.inventory.filter((_:any,i:number)=>i!==idx)}:s);
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+  }
+
+  const tabStyle2=(t:string)=>({
+    background:tabAir===t?"rgba(232,188,85,.12)":"transparent",
+    border:"none",borderBottom:tabAir===t?"2px solid var(--gold)":"2px solid transparent",
+    color:tabAir===t?"#f0a0c0":"var(--muted2)",
+    padding:"10px 22px",cursor:"pointer",
+    fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,
+    transition:"all .2s"
+  });
+
+  return(
+    <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:12}}>📦 AIRDROP LAUNCHER</div>
+      <div style={{display:"flex",borderBottom:"1px solid var(--border)",marginBottom:20}}>
+        <button style={tabStyle2("roll")} onClick={()=>setTabAir("roll")}>🎲 ส่ง Airdrop</button>
+        <button style={tabStyle2("history")} onClick={()=>setTabAir("history")}>📋 ประวัติการรับ ({allHistory.length})</button>
+      </div>
+      {tabAir==="history"&&(
+        <div>
+          {allHistory.length===0?(
+            <div className="card" style={{textAlign:"center",padding:48}}>
+              <div style={{fontSize:40,marginBottom:12}}>📦</div>
+              <div className="cond" style={{fontSize:20,color:"var(--muted)"}}>ยังไม่มีประวัติการส่ง Airdrop</div>
+            </div>
+          ):(
+            allHistory.map((it:any,i:number)=>(
+              <div key={i} className="card" style={{display:"flex",alignItems:"center",gap:14,marginBottom:8,borderColor:`${it.color||"var(--border)"}40`}}>
+                <div style={{fontSize:32}}>{it.icon}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:600,color:it.color||"#fff"}}>{it.name}</div>
+                  <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
+                    <span className="badge" style={{background:`${it.color||"#fff"}22`,border:`1px solid ${it.color||"#fff"}50`,color:it.color||"#fff",fontSize:9}}>★ {it.rarity}</span>
+                    <span style={{fontSize:12,color:"var(--muted)"}}>{it.receivedAt}</span>
+                  </div>
+                  {it.note&&<div style={{fontSize:12,color:"var(--muted2)",fontStyle:"italic",marginTop:3}}>"{it.note}"</div>}
+                </div>
+                <div style={{textAlign:"center",minWidth:120}}>
+                  <div style={{fontSize:24}}>{it.studentAvatar}</div>
+                  <div style={{fontSize:12,color:"#fff",marginTop:2}}>{it.studentName}</div>
+                </div>
+                <button className="btn btn-red" onClick={()=>removeAirdropHistory(it.studentId,it.idx)} style={{padding:"7px 12px",fontSize:12,flexShrink:0}}>🗑 ลบ</button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+      {tabAir==="roll" && (<div>
+      {sent&&<div className="air-in" style={{background:"rgba(232,188,85,.12)",border:"1px solid rgba(232,188,85,.5)",borderRadius:8,padding:"13px 20px",marginBottom:14,color:"#f0a0c0",fontSize:14,textAlign:"center"}}>{sent}</div>}
+      <div className="card card-gold" style={{marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showPoolEditor?16:0}}>
+          <div><div className="cond" style={{fontSize:18,color:"#f0a0c0",letterSpacing:2}}>🎁 Reward Pool ({pool.length})</div></div>
+          <button className="btn btn-gold" onClick={()=>setShowPoolEditor(p=>!p)} style={{fontSize:13,padding:"9px 20px"}}>
+            {showPoolEditor?"▲ ซ่อน":"▼ จัดการ"}
+          </button>
+        </div>
+        {showPoolEditor&&(
+          <>
+            <div style={{background:"rgba(14,26,43,.7)",borderRadius:8,padding:16,marginBottom:14,border:"1px solid var(--border)"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr auto",gap:10,alignItems:"end"}}>
+                <div><label className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:6}}>ชื่อรางวัล</label>
+                  <input className="input" value={addForm.name} onChange={e=>setAddForm(p=>({...p,name:e.target.value}))} placeholder="ชื่อรางวัล"/></div>
+                <div><label className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:6}}>ไอคอน</label>
+                  <input className="input" value={addForm.icon} onChange={e=>setAddForm(p=>({...p,icon:e.target.value}))} style={{width:64,textAlign:"center",fontSize:22,padding:"6px"}}/></div>
+                <div><label className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:2,display:"block",marginBottom:6}}>ระดับ</label>
+                  <select className="input" value={addForm.rarity} onChange={e=>setAddForm(p=>({...p,rarity:e.target.value}))}>
+                    {Object.keys(RARITY_COLORS).map(r=><option key={r} value={r}>{r}</option>)}
+                  </select></div>
+                <button className="btn btn-gold" onClick={addReward} style={{padding:"11px 18px"}}>➕</button>
+              </div>
+              {poolMsg&&<div style={{marginTop:8,fontSize:12,color:poolMsg.startsWith("✅")?"var(--green)":"var(--red)"}}>{poolMsg}</div>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:8}}>
+              {pool.map(r=>(
+                <div key={r.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",
+                  background:"rgba(14,26,43,.5)",borderRadius:7,border:`1px solid ${r.color}50`}}>
+                  <div style={{fontSize:22,flexShrink:0}}>{r.icon}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</div>
+                    <div style={{fontSize:9,color:r.color,marginTop:2}}>★ {r.rarity}</div>
+                  </div>
+                  <button onClick={()=>setPool(p=>p.filter(x=>x.id!==r.id))} style={{background:"rgba(232,96,96,.18)",border:"1px solid rgba(232,96,96,.35)",borderRadius:4,color:"var(--red)",fontSize:11,cursor:"pointer",padding:"3px 8px",flexShrink:0}}>🗑</button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div className="card">
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+              {EVENT_FILTERS.map(ef=>(
+                <button key={ef.id} onClick={()=>{setEventFilter(ef.id);setSelStu("");}} className="btn"
+                  style={{background:eventFilter===ef.id?"rgba(170,143,240,.2)":"rgba(255,255,255,.04)",
+                    border:`1px solid ${eventFilter===ef.id?"rgba(170,143,240,.6)":"var(--border)"}`,
+                    color:eventFilter===ef.id?"#c4aaff":"var(--muted2)",borderRadius:7,padding:"8px 12px",
+                    fontFamily:"'Noto Sans Thai',sans-serif",fontSize:12}}>
+                  {ef.label} {ef.title}
+                </button>
+              ))}
+            </div>
+            <select className="input" value={selStu} onChange={e=>setSelStu(e.target.value)}>
+              <option value="">-- เลือกผู้รับ --</option>
+              {filtered.map(s=><option key={s.id} value={s.id}>{s.avatar} {s.name}</option>)}
+            </select>
+          </div>
+          <button className="btn btn-gold" onClick={startRoll} disabled={!selStu||rolling||pool.length===0}
+            style={{padding:18,fontSize:18,opacity:(!selStu||rolling||pool.length===0)?.4:1}}>
+            {rolling?<><span style={{animation:"spin .3s linear infinite",display:"inline-block"}}>🎲</span> ROLLING...</>:<>🎲 ROLL AIRDROP</>}
+          </button>
+          {result&&!rolling&&(
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <input className="input" value={note} onChange={e=>setNote(e.target.value)} placeholder="ข้อความถึงนักเรียน เช่น ทำได้ดีมาก! 🎉"/>
+              <button className="btn btn-cyan" onClick={send} style={{padding:16,fontSize:16}}>📦 ส่ง Airdrop!</button>
+            </div>
+          )}
+        </div>
+        <div className="card card-gold" style={{textAlign:"center",minHeight:220,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+          {!rolling&&!result&&<div><div style={{fontSize:56,opacity:.25,marginBottom:8}}>📦</div><div className="mono" style={{fontSize:11,color:"var(--muted)"}}>กด ROLL เพื่อสุ่ม</div></div>}
+          {rolling&&pool[rollIdx]&&<div><div style={{fontSize:72,animation:"spin .18s linear infinite"}}>{pool[rollIdx].icon}</div><div className="mono" style={{fontSize:12,color:"#f0a0c0",marginTop:10,animation:"blink .4s linear infinite"}}>ROLLING...</div></div>}
+          {result&&!rolling&&(
+            <div className="air-in">
+              <div style={{fontSize:72,marginBottom:10,filter:`drop-shadow(0 0 22px ${result.color})`}}>{result.icon}</div>
+              <div style={{color:result.color,fontWeight:700,fontSize:18,marginBottom:6}}>{result.name}</div>
+              <div className="badge" style={{background:`${result.color}20`,border:`1px solid ${result.color}60`,color:result.color,fontSize:12,padding:"4px 14px"}}>★ {result.rarity}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+    )}
+  </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// GOOGLE APPS SCRIPT API — แก้ไขแล้ว
+// ─────────────────────────────────────────────
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwoaVGfEoN7CTS4hcIhdZ09JW7DH3e87gT9De-xkhOZOv-4lLKebsxVgm7iasVElKCr/exec";
+const img1 = "https://drive.google.com/uc?export=view&id=17fdYhXvfxqVa9_737WvrRsunONhd3Vrd";
+const img2 = "https://i.postimg.cc/RVGwSXJh/a8d4de59513d2b1ca0a346c0c7fd039c.jpg";
+const img3 = "https://i.postimg.cc/13kXsqB0/wp13416836.png";
+
+
+async function gasGet(){
+  try{
+    // GET ไม่ต้องใช้ no-cors — GAS อนุญาต GET ปกติ
+    const r=await fetch(GAS_URL+"?action=getAll");
+    return await r.json();
+  }catch(e){
+    console.error("gasGet error:",e);
+    return null;
+  }
+}
+
+async function gasSave(action,data){
+  try{
+    // POST ต้องใช้ no-cors + Content-Type: text/plain
+    await fetch(GAS_URL,{
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify({action,data:JSON.stringify(data)})
+    });
+  }catch(e){
+    console.error("gasSave error:",e);
+  }
+}
+
+// ส่งงาน/ลบงานแบบปลอดภัยจากการชนกัน — เซิร์ฟเวอร์อ่านข้อมูลสดเองแล้วแก้ทีละคน ไม่ต้องส่งทั้ง array
+async function gasSubmitAssignment(payload){
+  try{
+    await fetch(GAS_URL,{
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify({action:"submitAssignment",...payload})
+    });
+  }catch(e){
+    console.error("gasSubmitAssignment error:",e);
+  }
+}
+async function gasRemoveSubmission(payload){
+  try{
+    await fetch(GAS_URL,{
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify({action:"removeSubmission",...payload})
+    });
+  }catch(e){
+    console.error("gasRemoveSubmission error:",e);
+  }
+}
+// ให้คะแนนแบบปลอดภัยจากการชนกัน — เซิร์ฟเวอร์อ่านข้อมูลสดเองแล้วแก้ทีละคน (มี Lock กันครูหลายคน/แท็บให้คะแนนพร้อมกัน)
+async function gasGradeSubmission(payload){
+  try{
+    await fetch(GAS_URL,{
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify({action:"gradeSubmission",...payload})
+    });
+  }catch(e){
+    console.error("gasGradeSubmission error:",e);
+  }
+}
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const result=reader.result;
+      // result = "data:<mime>;base64,<data>" — ตัดเอาแค่ส่วน base64
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─────────────────────────────────────────────
+// SYNC TO SHEET — รูปแบบที่อ่านง่ายขึ้น
+// ─────────────────────────────────────────────
+async function syncStudentsToSheet(students,assignments){
+  // ส่งข้อมูลที่ structured สำหรับ sheet rows
+  const rows=students.map(s=>{
+    const submissionLinks={};
+    assignments.forEach(a=>{
+      const sub=s.submissions?.[a.id];
+      submissionLinks[a.id]={
+        title:a.title,
+        submitted:sub?true:false,
+        link:sub?.file||"",
+        xpEarned:sub?.xpEarned||0,
+        submittedAt:sub?.submittedAt||""
+      };
+    });
+    return{
+      id:s.id,
+      name:s.name,
+      originalPassword:INIT_STUDENTS.find(x=>x.id===s.id)?.password||s.password,
+      currentPassword:s.password,
+      xp:s.xp,
+      grade:getRank(getEffectiveXP(s,assignments)).grade,
+      rank:getRank(getEffectiveXP(s,assignments)).label,
+      midterm:s.midterm,
+      final:s.final,
+      submissionLinks
+    };
+  });
+  await gasSave("saveStudentsDetailed",rows);
+}
+
+// ─────────────────────────────────────────────
+// MAIN APP
+// ─────────────────────────────────────────────
+export default function App(){
   const [students,setStudents]=useState(INIT_STUDENTS);
   const [assignments,setAssignments]=useState(INIT_ASSIGNMENTS);
   const [resources,setResources]=useState(INIT_RESOURCES);
-  // ... (ส่วน state อื่นๆ ของคุณ) ...
+  const [auth,setAuth]=useState(null);
+  const [loaded,setLoaded]=useState(false);
+  // dataLoadOk = true เฉพาะตอนที่ดึงข้อมูลนักเรียนจริงจาก Sheet มาได้สำเร็จอย่างน้อย 1 ครั้ง
+  // ป้องกันไม่ให้ auto-save เขียนทับ Sheet ด้วยข้อมูลเปล่า (INIT_STUDENTS) ตอนที่ดึงข้อมูลไม่สำเร็จ เช่น ปัญหา CORS/เน็ตหลุด
+  const [dataLoadOk,setDataLoadOk]=useState(false);
+  const [maxXpSetting,setMaxXpSetting]=useState(2500);
+  const [maxXpModal,setMaxXpModal]=useState(false);
+  const [maxXpInput,setMaxXpInput]=useState("2500");
+  // ตัวจับเวลา debounce แยกกันคนละตัวต่อชุดข้อมูล (นักเรียน/ใบงาน/ไฟล์) — ห้ามใช้ตัวเดียวร่วมกัน
+  // เพราะถ้าใช้ร่วมกัน พอมีการเปลี่ยนแปลงหลายอย่างใกล้เคียงกัน (เช่นตอนโหลดหน้าเว็บครั้งแรก)
+  // การรีเซ็ตตัวจับเวลาของอันหลังจะไปยกเลิกตัวจับเวลาของอันก่อนหน้าโดยไม่ตั้งใจ ทำให้การบันทึกบางอย่างไม่เกิดขึ้นจริง
+  const saveTimerStudents=useRef<any>(null);
+  const saveTimerAssignments=useRef<any>(null);
+  const saveTimerResources=useRef<any>(null);
+  // ตั้งเป็น true เพื่อข้าม auto-save รอบถัดไป 1 ครั้ง — ใช้ตอนที่เพิ่งบันทึกผ่านช่องทางที่ปลอดภัยกว่าไปแล้ว (ส่ง/ลบงาน)
+  // กันไม่ให้ auto-save ทั่วไป (ที่ยังทับทั้ง array) มาเขียนทับซ้ำด้วยข้อมูลที่อาจไม่ทันอัปเดต
+  const skipAutoSaveRef=useRef(false);
+  function skipNextSave(){skipAutoSaveRef.current=true;}
+  // ดึงข้อมูลนักเรียนล่าสุดจาก Sheet มาซิงก์ใส่หน้าจอ — ใช้หลังส่ง/ลบงานผ่านช่องทางปลอดภัย
+  // เพื่อให้เห็นผลลัพธ์จริงที่เซิร์ฟเวอร์บันทึกไว้ (กันข้อมูลในเครื่องไม่ตรงกับของจริง)
+  async function refreshFromSheet(){
+    const data=await gasGet();
+    if(data&&data.students&&data.students.length>0){
+      skipAutoSaveRef.current=true; // การอัปเดตนี้คือการ "อ่าน" ไม่ใช่การเปลี่ยนแปลงใหม่ ไม่ต้อง save ซ้ำ
+      setStudents(data.students);
+    }
+  }
 
-  // [ใส่ส่วน useEffect และฟังก์ชันภายใน App ทั้งหมดของคุณที่นี่]
-  // [อย่าลืมคงฟังก์ชัน TeacherAssignments และ TeacherScores ที่เราแก้ใหม่ไว้ด้วย]
+  // โหลดข้อมูลตอนเริ่ม
+  useEffect(()=>{
+    gasGet().then(data=>{
+      if(data){
+        if(data.students&&data.students.length>0)setStudents(data.students);
+        if(data.assignments&&data.assignments.length>0)setAssignments(data.assignments);
+        if(data.resources&&data.resources.length>0)setResources(data.resources);
+        setDataLoadOk(true); // ดึงข้อมูลจาก Sheet สำเร็จ (ไม่ว่าแต่ละอย่างจะว่างหรือไม่) ปลอดภัยที่จะเซฟกลับได้
+      }
+      setLoaded(true);
+    });
+  },[]);
 
-  return (
+  // debounce save — รอ 1 วินาทีหลังเปลี่ยนค่า
+  // ⚠️ เซฟกลับ Sheet ได้ก็ต่อเมื่อเคยดึงข้อมูลจริงสำเร็จแล้วเท่านั้น (dataLoadOk) กันข้อมูลหาย
+  useEffect(()=>{
+    if(!loaded||!dataLoadOk)return;
+    clearTimeout(saveTimerStudents.current);
+    saveTimerStudents.current=setTimeout(async()=>{
+      if(skipAutoSaveRef.current){skipAutoSaveRef.current=false;return;}
+      await gasSave("saveStudents",students);
+      await syncStudentsToSheet(students,assignments);
+    },1000);
+  },[students,loaded,dataLoadOk]);
+
+  useEffect(()=>{
+    if(!loaded||!dataLoadOk)return;
+    clearTimeout(saveTimerAssignments.current);
+    saveTimerAssignments.current=setTimeout(()=>{
+      gasSave("saveAssignments",assignments);
+    },1000);
+  },[assignments,loaded,dataLoadOk]);
+
+  useEffect(()=>{
+    if(!loaded||!dataLoadOk)return;
+    clearTimeout(saveTimerResources.current);
+    saveTimerResources.current=setTimeout(()=>{
+      gasSave("saveResources",resources);
+    },1000);
+  },[resources,loaded,dataLoadOk]);
+
+  const [page,setPage]=useState("dashboard");
+  // เว็บนี้เปลี่ยนหน้าด้วย React state (ไม่ได้โหลดหน้าใหม่จริง) เบราว์เซอร์เลยไม่เด้ง scroll กลับขึ้นบนสุดให้อัตโนมัติ
+  // ทุกครั้งที่เปลี่ยนหน้า ให้เลื่อนกลับขึ้นบนสุดเอง กันปัญหา "กดเข้ามาแล้วต้องเลื่อนหา"
+  useEffect(()=>{window.scrollTo(0,0);},[page]);
+  const [pendingAirdrop,setPendingAirdrop]=useState(null);
+  const [activePopup,setActivePopup]=useState(null);
+  const [loginPending,setLoginPending]=useState<any>(null);
+
+  function handleLogin(role,userId){
+    setAuth({role,userId});
+    setPage(role==="teacher"?"overview":"dashboard");
+    if(role==="student"){
+      const s=students.find((x:any)=>x.id===userId);
+      if(s&&s.inventory&&s.inventory.length>0){
+        const unseen=(s.inventory as any[]).filter((it:any)=>!it.seen);
+        if(unseen.length>0)setLoginPending(unseen[unseen.length-1]);
+      }
+    }
+  }
+  function handleLogout(){setAuth(null);setLoginPending(null);}
+
+  useEffect(()=>{
+    if(!pendingAirdrop)return;
+    const{targetStudentId,...item}=pendingAirdrop as any;
+    // เพิ่ม inventory พร้อม seen:false เสมอ
+    setStudents(prev=>{
+      const updated=prev.map(s=>s.id===targetStudentId?{...s,inventory:[...s.inventory,{...item,seen:false}]}:s);
+      // บันทึกลง Sheet ทันทีโดยไม่รอ debounce
+      gasSave("saveStudents",updated);
+      return updated;
+    });
+    // ถ้านักเรียน login อยู่ตอนนี้ → แสดง popup ทันที
+    if(auth?.role==="student"&&auth?.userId===targetStudentId){
+      setTimeout(()=>setActivePopup({...item}),300);
+    }
+    setPendingAirdrop(null);
+  },[pendingAirdrop]);
+
+  const{role,userId}=auth||{};
+  const currentStudent=students.find(s=>s.id===userId);
+  const navUser=role==="teacher"?{name:"ครูผู้สอน",avatar:"👩‍✈️",xp:9999}:currentStudent;
+  const currentRoom=currentStudent?.room;
+
+  if(!auth)return(<><style>{G}</style><LoginScreen students={students} onLogin={handleLogin}/></>);
+
+  return(
     <>
       <style>{G}</style>
-      {/* ... โครงสร้าง JSX ของคุณ ... */}
+      <SakuraBackground/>
+      {activePopup&&role==="student"&&<AirdropPopup airdrop={activePopup} onClaim={()=>{
+        setStudents(prev=>prev.map(s=>s.id===userId?{...s,inventory:s.inventory.map((it:any)=>it.name===activePopup.name?{...it,seen:true}:it)}:s));
+        setActivePopup(null);
+      }}/>}
+      {loginPending&&role==="student"&&!activePopup&&(
+        <div style={{position:"fixed",top:60,left:0,right:0,zIndex:500,padding:"0 16px"}}>
+          <div style={{maxWidth:700,margin:"0 auto",background:"linear-gradient(90deg,rgba(232,188,85,.12),rgba(232,188,85,.22),rgba(232,188,85,.12))",
+            border:"1px solid rgba(232,188,85,.45)",borderRadius:10,padding:"12px 18px",
+            display:"flex",alignItems:"center",gap:14,backdropFilter:"blur(8px)"}}>
+            <div style={{fontSize:28,animation:"shake 1s ease-in-out infinite"}}>📦</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:14,fontWeight:600,color:"#f0a0c0"}}>มี Airdrop รอคุณอยู่!</div>
+              <div style={{fontSize:12,color:"var(--muted2)",marginTop:2}}>ครูส่งรางวัลให้คุณ กดเปิดได้เลย</div>
+            </div>
+            <button className="btn btn-gold" onClick={()=>{setActivePopup(loginPending);setLoginPending(null);}}
+              style={{fontSize:13,padding:"8px 20px"}}>📦 เปิด!</button>
+            <button className="btn-ghost" onClick={()=>setLoginPending(null)}
+              style={{fontSize:11,padding:"6px 10px"}}>✕</button>
+          </div>
+        </div>
+      )}
+      <div style={{position:"relative",zIndex:1,minHeight:"100vh"}}>
+        <TopNav user={navUser} role={role} page={page} setPage={setPage} onLogout={handleLogout} room={currentRoom} assignments={assignments}/>
+        <main>
+          <PageHeader page={page} setPage={setPage}/>
+          {loaded&&!dataLoadOk&&(
+            <div style={{margin:"0 20px 12px",padding:"12px 18px",background:"rgba(232,96,96,.14)",
+              border:"1px solid rgba(232,96,96,.45)",borderRadius:8,color:"var(--red)",fontSize:13,
+              display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:20}}>⚠️</span>
+              <span>เชื่อมต่อฐานข้อมูล (Google Sheets) ไม่สำเร็จ — ข้อมูลที่เห็นตอนนี้อาจไม่ใช่ข้อมูลล่าสุด และการเปลี่ยนแปลงในหน้านี้จะ<b>ยังไม่ถูกบันทึก</b> จนกว่าจะเชื่อมต่อสำเร็จ กรุณาลองรีเฟรชหน้าใหม่</span>
+            </div>
+          )}
+          {role==="student"&&page==="dashboard"    &&currentStudent&&<StudentDashboard student={currentStudent} students={students} assignments={assignments} setPage={setPage} setStudents={setStudents}/>}
+          {role==="student"&&page==="assignments"  &&currentStudent&&<StudentAssignments student={currentStudent} students={students} assignments={assignments} setStudents={setStudents} skipNextSave={skipNextSave} refreshFromSheet={refreshFromSheet}/>}
+          {role==="student"&&page==="resources"    &&<StudentResources resources={resources}/>}
+          {role==="student"&&page==="ranking"      &&<RankingPage students={students} myId={userId} isTeacher={false} assignments={assignments}/>}
+          {role==="student"&&page==="inventory"    &&currentStudent&&<StudentInventory student={currentStudent}/>}
+          {role==="student"&&page==="settings"     &&currentStudent&&<StudentSettings student={currentStudent} setStudents={setStudents}/>}
+          {role==="teacher"&&page==="overview"     &&<TeacherOverview students={students} assignments={assignments} setPage={setPage} maxXp={maxXpSetting} onEditMaxXp={()=>{setMaxXpInput(String(maxXpSetting));setMaxXpModal(true);}}/>}
+          {role==="teacher"&&page==="students"     &&<TeacherStudents students={students} assignments={assignments} setStudents={setStudents}/>}
+          {role==="teacher"&&page==="t-assignments"&&<TeacherAssignments assignments={assignments} setAssignments={setAssignments} students={students} setStudents={setStudents} skipNextSave={skipNextSave} refreshFromSheet={refreshFromSheet}/>}
+          {role==="teacher"&&page==="t-resources"  &&<TeacherResources resources={resources} setResources={setResources}/>}
+          {role==="teacher"&&page==="t-scores"     &&<TeacherScores students={students} setStudents={setStudents} assignments={assignments}/>}
+          {role==="teacher"&&page==="t-exam"       &&<TeacherExamScores students={students} setStudents={setStudents}/>}
+          {role==="teacher"&&page==="t-grades"     &&<TeacherGrades students={students} setStudents={setStudents} assignments={assignments}/>}
+          {role==="teacher"&&page==="t-airdrop"    &&<TeacherAirdrop students={students} setPendingAirdrop={setPendingAirdrop} setStudents={setStudents}/>}
+          {role==="teacher"&&page==="ranking"      &&<RankingPage students={students} myId={undefined} isTeacher={true} assignments={assignments}/>}
+        </main>
+      </div>
     </>
   );
 }
