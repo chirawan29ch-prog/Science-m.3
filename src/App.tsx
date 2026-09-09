@@ -2604,6 +2604,39 @@ function TeacherScores({students,setStudents,assignments,studentsLoadOk}){
     setEditEntry(null);
   }
 
+  // แก้ไข XP รายคนตรงในหน้าสรุปรายงานได้เลย (ไม่ต้องเปิด popup) — พิมพ์แล้วกดออกจากช่อง (blur) บันทึกทันที
+  function updateEntryXpInline(activityName:string,studentId:string,newXpStr:string,actMaxXp:number,chapterId:string,phase:string){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
+    const newXp=Number(newXpStr);
+    if(newXpStr===""||isNaN(newXp)||newXp<0)return;
+    const today=new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"numeric"});
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      if(s.id!==studentId)return s;
+      const idx=(s.xpLog||[]).findIndex((l:any)=>l.activity===activityName);
+      if(idx===-1){
+        const logEntry={activity:activityName,xp:newXp,maxXp:actMaxXp,date:today,chapterId,phase};
+        return{...s,xp:s.xp+newXp,xpLog:[...(s.xpLog||[]),logEntry]};
+      }
+      const oldXp=s.xpLog[idx].xp||0;
+      const diff=newXp-oldXp;
+      const newLog=[...s.xpLog];
+      newLog[idx]={...newLog[idx],xp:newXp};
+      return{...s,xp:s.xp+diff,xpLog:newLog};
+    }));
+  }
+  // ลบ XP รายคนตรงในหน้าสรุปรายงานได้เลย (ไม่ต้องเปิด popup)
+  function quickDeleteEntry(activityName:string,studentId:string){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
+    setStudents((prev:any)=>prev.map((s:any)=>{
+      if(s.id!==studentId)return s;
+      const idx=(s.xpLog||[]).findIndex((l:any)=>l.activity===activityName);
+      if(idx===-1)return s;
+      const oldXp=s.xpLog[idx].xp||0;
+      const newLog=s.xpLog.filter((_:any,i:number)=>i!==idx);
+      return{...s,xp:s.xp-oldXp,xpLog:newLog};
+    }));
+  }
+
   function toast(t,isErr=false){setMsg({text:t,err:isErr});setTimeout(()=>setMsg(null),3500);}
   const filteredStudents=selRoomFilter==="all"?students:students.filter((s:any)=>s.room===selRoomFilter);
   // เช็คว่านักเรียนคนนี้เคยได้รับ "กิจกรรมที่กำลังตั้งค่าอยู่ตอนนี้" ไปแล้วหรือยัง (สำหรับงานกลุ่ม บันทึกได้หลายรอบ)
@@ -2966,7 +2999,7 @@ function TeacherScores({students,setStudents,assignments,studentsLoadOk}){
             </div>
           ):(
             allActivities.map((act:any,ai)=>{
-              const sortedStudents=[...students].sort((a,b)=>b.xp-a.xp);
+              const sortedStudents=[...students].sort((a:any,b:any)=>Number(a.password||0)-Number(b.password||0));
               const totalGiven=Object.values(act.entries).reduce((s:number,e:any)=>s+(e.xp||0),0);
               const receivedCount=Object.keys(act.entries).length;
               return(
@@ -2989,24 +3022,27 @@ function TeacherScores({students,setStudents,assignments,studentsLoadOk}){
                         style={{fontSize:12,padding:"6px 14px",borderColor:"rgba(232,96,96,.4)",color:"var(--red)"}}>🗑 ลบ</button>
                     </div>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
-                    {sortedStudents.map(s=>{
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
+                    {sortedStudents.map((s,i)=>{
                       const entry=act.entries[s.id];
                       return(
-                        <div key={s.id} onClick={()=>setEditEntry({activityName:act.name,studentId:s.id,studentName:s.name,xp:entry?entry.xp:act.maxXp,maxXp:act.maxXp,isNew:!entry})}
-                          style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",cursor:"pointer",
+                        <div key={s.id+"_"+(entry?entry.xp:"none")} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",
                           background:entry?"rgba(94,200,126,.07)":"rgba(232,96,96,.05)",
                           border:`1px solid ${entry?"rgba(94,200,126,.25)":"rgba(232,96,96,.15)"}`,
-                          borderRadius:7,transition:"filter .15s"}}
-                          onMouseEnter={e=>(e.currentTarget as HTMLElement).style.filter="brightness(1.3)"}
-                          onMouseLeave={e=>(e.currentTarget as HTMLElement).style.filter="brightness(1)"}>
+                          borderRadius:7}}>
+                          <span style={{fontSize:10,color:"var(--muted)",width:20,textAlign:"center",flexShrink:0}}>{i+1}</span>
                           <span style={{fontSize:20,flexShrink:0}}>{s.avatar}</span>
                           <div style={{flex:1,minWidth:0}}>
                             <div style={{fontSize:12,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name.split(" ").slice(1).join(" ")}</div>
-                            {entry?<div className="mono" style={{fontSize:13,color:"#f0a0c0",fontWeight:700}}>+{entry.xp} XP ({xpToScore(entry.xp)} คะแนน)</div>
-                                  :<div style={{fontSize:11,color:"var(--muted)"}}>ยังไม่ได้รับ</div>}
                           </div>
-                          <span style={{fontSize:12,color:"var(--muted)",flexShrink:0}}>✏️</span>
+                          <input type="number" min={0} defaultValue={entry?entry.xp:""} placeholder="—"
+                            onBlur={e=>updateEntryXpInline(act.name,s.id,e.target.value,act.maxXp,act.chapterId||"CH1",act.phase||"before")}
+                            onKeyDown={e=>{if(e.key==="Enter")(e.target as HTMLInputElement).blur();}}
+                            style={{width:52,fontSize:13,textAlign:"center",background:"rgba(10,20,38,.8)",
+                              border:"1px solid rgba(232,188,85,.4)",color:"#f0a0c0",borderRadius:5,padding:"4px 6px",
+                              fontFamily:"'Share Tech Mono',monospace",outline:"none",flexShrink:0}}/>
+                          {entry&&<button onClick={()=>quickDeleteEntry(act.name,s.id)} title="ลบรายการนี้"
+                            style={{background:"transparent",border:"none",color:"var(--red)",cursor:"pointer",fontSize:13,padding:"0 2px",flexShrink:0}}>✕</button>}
                         </div>
                       );
                     })}
