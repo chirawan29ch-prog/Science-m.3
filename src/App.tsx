@@ -79,7 +79,7 @@ const CHAPTERS = [
   {id:"CH1",label:"หน่วยที่ 1",title:"วิทยาศาสตร์กับการแก้ปัญหา",icon:"🔬",color:"#7de8d0",bg:"rgba(125,232,208,.06)"},
   {id:"CH2",label:"หน่วยที่ 2",title:"พันธุศาสตร์",icon:"🧬",color:"#c060e0",bg:"rgba(192,96,224,.06)"},
   {id:"CH3",label:"หน่วยที่ 3",title:"คลื่นและแสง",icon:"🌊",color:"#f0a0c0",bg:"rgba(240,160,192,.06)"},
-  {id:"CH4",label:"หน่วยที่ 4",title:"ปฏิสัมพันธ์ในระบบสุริยะ",icon:"🌌",color:"#f5cc70",bg:"rgba(245,204,112,.06)"},
+  {id:"CH4",label:"หน่วยที่ 4",title:"ระบบสุริยะของเรา",icon:"🌌",color:"#f5cc70",bg:"rgba(245,204,112,.06)"},
 ];
 
 const XP_RANKS = [
@@ -911,7 +911,7 @@ function LoginScreen({students,onLogin}){
 // ─────────────────────────────────────────────
 // TOP NAV
 // ─────────────────────────────────────────────
-function TopNav({user,role,page,setPage,onLogout,room,assignments}:any){
+function TopNav({user,role,page,setPage,onLogout,room,assignments,studentsLoadOk}:any){
   const sTabs=[{id:"dashboard",label:"DASHBOARD"},{id:"resources",label:"บทเรียน"},{id:"assignments",label:"ส่งงาน"},{id:"ranking",label:"TOP 3"},{id:"inventory",label:"AIRDROP"},{id:"settings",label:"ตั้งค่า"}];
   const tTabs=[{id:"overview",label:"OVERVIEW"},{id:"students",label:"STUDENTS"},{id:"t-assignments",label:"📋 งาน"},{id:"t-resources",label:"📁 ไฟล์"},{id:"t-scores",label:"⭐ XP"},{id:"t-exam",label:"📝 สอบ"},{id:"t-grades",label:"📊 คะแนน"},{id:"t-airdrop",label:"📦 AIRDROP"},{id:"ranking",label:"RANKING"}];
   const tabs=role==="teacher"?tTabs:sTabs;
@@ -921,6 +921,17 @@ function TopNav({user,role,page,setPage,onLogout,room,assignments}:any){
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
           <div className="cond" style={{fontSize:"clamp(16px,4vw,20px)",fontWeight:900,color:"#f0a0c0",letterSpacing:2,flexShrink:0,whiteSpace:"nowrap",textShadow:"0 0 18px rgba(232,188,85,.5)"}}>🔬 SCI·BG</div>
           <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+            {role==="teacher"&&(
+              <span title={studentsLoadOk?"เชื่อมต่อฐานข้อมูลสำเร็จ — บันทึกได้ตามปกติ":"⚠️ ยังไม่ได้เชื่อมต่อข้อมูลนักเรียนจริง — การแก้ไขใดๆ ตอนนี้จะไม่ถูกบันทึก! ลองรีเฟรชหน้าใหม่"}
+                style={{display:"flex",alignItems:"center",gap:5,fontSize:10,padding:"4px 9px",borderRadius:20,flexShrink:0,whiteSpace:"nowrap",
+                  background:studentsLoadOk?"rgba(94,200,126,.12)":"rgba(232,96,96,.18)",
+                  border:`1px solid ${studentsLoadOk?"rgba(94,200,126,.4)":"rgba(232,96,96,.6)"}`,
+                  color:studentsLoadOk?"var(--green)":"var(--red)"}}>
+                <span style={{width:7,height:7,borderRadius:"50%",background:studentsLoadOk?"var(--green)":"var(--red)",
+                  animation:studentsLoadOk?"none":"pulse 1s ease-in-out infinite"}}/>
+                {studentsLoadOk?"เชื่อมต่อแล้ว":"ยังไม่พร้อมบันทึก"}
+              </span>
+            )}
             <span style={{fontSize:20,flexShrink:0}}>{user?.avatar||"👩‍✈️"}</span>
             <div style={{lineHeight:1.3,minWidth:0}}>
               <div style={{fontSize:12,color:"var(--text)",maxWidth:"28vw",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name||"Commander"}</div>
@@ -1541,11 +1552,12 @@ function StudentSettings({student,setStudents}){
 // ─────────────────────────────────────────────
 // TEACHER: EXAM SCORES
 // ─────────────────────────────────────────────
-function TeacherExamScores({students,setStudents}){
+function TeacherExamScores({students,setStudents,studentsLoadOk}){
   const [midScores,setMidScores]=useState(()=>{const m={};students.forEach(s=>{m[s.id]=s.midterm!==null&&s.midterm!==undefined?String(s.midterm):"";});return m;});
   const [finalScores,setFinalScores]=useState(()=>{const m={};students.forEach(s=>{m[s.id]=s.final!==null&&s.final!==undefined?String(s.final):"";});return m;});
   const [saved,setSaved]=useState(false);
   function saveAll(){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     setStudents(prev=>prev.map(s=>({...s,
       midterm:midScores[s.id]!==""?Number(midScores[s.id]):null,
       final:finalScores[s.id]!==""?Number(finalScores[s.id]):null,
@@ -2537,7 +2549,7 @@ function TeacherResources({resources,setResources}){
 // ─────────────────────────────────────────────
 // TEACHER: XP MANAGEMENT (อัปเกรด)
 // ─────────────────────────────────────────────
-function TeacherScores({students,setStudents,assignments}){
+function TeacherScores({students,setStudents,assignments,studentsLoadOk}){
   const [tab,setTab]=useState("add");
   useEffect(()=>{window.scrollTo(0,0);},[tab]);
   const [selRoomFilter,setSelRoomFilter]=useState("all");
@@ -2553,6 +2565,7 @@ function TeacherScores({students,setStudents,assignments}){
   const [editEntry,setEditEntry]=useState<any>(null); // {activityName, studentId, studentName, xp, maxXp, isNew}
   function saveEditEntry(){
     if(!editEntry)return;
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     const{activityName,studentId,xp,maxXp}=editEntry;
     const newXp=Number(xp);
     if(isNaN(newXp)||newXp<0){toast("กรุณาใส่ XP ให้ถูกต้อง",true);return;}
@@ -2577,6 +2590,7 @@ function TeacherScores({students,setStudents,assignments}){
   }
   function deleteEditEntry(){
     if(!editEntry||editEntry.isNew)return;
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     const{activityName,studentId,studentName}=editEntry;
     setStudents((prev:any)=>prev.map((s:any)=>{
       if(s.id!==studentId)return s;
@@ -2606,6 +2620,7 @@ function TeacherScores({students,setStudents,assignments}){
     setPerStuXp((p:any)=>{const n={...p};ids.forEach(id=>n[id]=v);return n;});
   }
   function undoDuringSession(studentId:string){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     setStudents((prev:any)=>prev.map((s:any)=>{
       if(s.id!==studentId)return s;
       const idx=(s.xpLog||[]).findIndex((l:any)=>l.activity===activityName.trim());
@@ -2622,6 +2637,7 @@ function TeacherScores({students,setStudents,assignments}){
 
   function saveEditActivity(){
     if(!editAct)return;
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     const{oldName,newName,newChapterId,newMaxXp,newPhase,oldMaxXp}=editAct;
     if(!newName.trim()){toast("กรุณาใส่ชื่อกิจกรรม",true);return;}
     const newMax=Number(newMaxXp)||0;
@@ -2644,6 +2660,7 @@ function TeacherScores({students,setStudents,assignments}){
   }
 
   function deleteActivity(name){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     if(!window.confirm(`ลบกิจกรรม "${name}" ออกจากนักเรียนทุกคนเลยไหม? (คะแนนที่เคยให้ไปจะถูกหักออกด้วย)`))return;
     setStudents((prev:any)=>prev.map((s:any)=>{
       const removed=(s.xpLog||[]).filter((log:any)=>log.activity===name);
@@ -2655,6 +2672,7 @@ function TeacherScores({students,setStudents,assignments}){
   }
 
   function doAdd(){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     if(!maxXpAmt||Number(maxXpAmt)<=0){toast("กรุณาใส่ XP เต็มของกิจกรรมนี้",true);return;}
     if(!activityName.trim()){toast("กรุณาใส่ชื่องาน/กิจกรรม",true);return;}
     const ids=selectedIds().filter(id=>!alreadyGiven(filteredStudents.find((s:any)=>s.id===id)));
@@ -3004,7 +3022,7 @@ function TeacherScores({students,setStudents,assignments}){
 // ─────────────────────────────────────────────
 // TEACHER: GRADES SUMMARY + PRE/POST TEST
 // ─────────────────────────────────────────────
-function TeacherGrades({students,setStudents,assignments}){
+function TeacherGrades({students,setStudents,assignments,studentsLoadOk}){
   const [tabG,setTabG]=useState("score");
   useEffect(()=>{window.scrollTo(0,0);},[tabG]);
   const [maxPP,setMaxPP]=useState(20);
@@ -3017,6 +3035,7 @@ function TeacherGrades({students,setStudents,assignments}){
   // เพื่อให้รอดจากการสลับแท็บ/รีเฟรชหน้า เหมือนข้อมูลอื่นๆ ในระบบ (ไม่ใช่ state ชั่วคราวเหมือนเดิม)
   function getPP(st:any){return{pre:st.pretest??null,post:st.posttest??null};}
   function setPP(studentId:string,field:"pretest"|"posttest",value:number|null){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (คะแนนนี้จะไม่ถูกบันทึก)");return;}
     setStudents((prev:any)=>prev.map((s:any)=>s.id===studentId?{...s,[field]:value}:s));
   }
   const [saved,setSaved]=useState(false);
@@ -3061,6 +3080,7 @@ function TeacherGrades({students,setStudents,assignments}){
     return{key:"w",bg:"#ef4444"};
   }
   function saveAll(){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     setStudents((prev:any)=>prev.map((s:any)=>({
       ...s,
       midterm:editMid[s.id]!==""?Number(editMid[s.id]):null,
@@ -3986,19 +4006,34 @@ export default function App(){
     }
   }
 
-  // โหลดข้อมูลตอนเริ่ม
+  // โหลดข้อมูลตอนเริ่ม — ถ้าดึง "นักเรียน" มาไม่สำเร็จ (ชิ้นที่สำคัญที่สุด) ลองใหม่อัตโนมัติสูงสุด 3 ครั้ง
+  // ก่อนจะยอมแพ้ ลดโอกาสที่จะเจอปัญหา "แก้ไขแล้วดูเหมือนสำเร็จ แต่จริงๆ ไม่ได้บันทึก" จากความสะดุดชั่วคราวของเน็ต/เซิร์ฟเวอร์
   useEffect(()=>{
-    gasGet().then(data=>{
+    let cancelled=false;
+    async function loadWithRetry(attempt=1){
+      const data=await gasGet();
+      if(cancelled)return;
       if(data){
-        // ยืนยันว่าดึงมาสำเร็จจริงด้วย Array.isArray (ไม่ใช่แค่เช็ค length>0) — array ว่างเปล่าก็ถือว่า "ดึงสำเร็จ" เหมือนกัน
-        // ต่างจากเดิมที่เช็คแค่ length>0 ซึ่งพลาดแยกไม่ออกระหว่าง "ดึงสำเร็จแต่ว่างจริง" กับ "ดึงไม่สำเร็จ"
-        if(Array.isArray(data.students)){setStudents(data.students);setStudentsLoadOk(true);}
         if(Array.isArray(data.assignments)){setAssignments(data.assignments);setAssignmentsLoadOk(true);}
         if(Array.isArray(data.resources)){setResources(data.resources);setResourcesLoadOk(true);}
-        setDataLoadOk(true); // เชื่อมต่อ Sheet โดยรวมสำเร็จ (ใช้โชว์/ซ่อนแบนเนอร์แดงเท่านั้น)
+        // ยืนยันว่าดึงมาสำเร็จจริงด้วย Array.isArray (ไม่ใช่แค่เช็ค length>0) — array ว่างเปล่าก็ถือว่า "ดึงสำเร็จ" เหมือนกัน
+        // ต่างจากเดิมที่เช็คแค่ length>0 ซึ่งพลาดแยกไม่ออกระหว่าง "ดึงสำเร็จแต่ว่างจริง" กับ "ดึงไม่สำเร็จ"
+        if(Array.isArray(data.students)){
+          setStudents(data.students);setStudentsLoadOk(true);
+          setDataLoadOk(true);setLoaded(true);
+          return;
+        }
       }
-      setLoaded(true);
-    });
+      // ดึง "นักเรียน" ไม่สำเร็จ — ลองใหม่ (สูงสุด 3 ครั้ง ห่างกัน 1.5 วินาที) ก่อนยอมแพ้
+      if(attempt<3){
+        setTimeout(()=>loadWithRetry(attempt+1),1500);
+      } else {
+        if(data)setDataLoadOk(true); // เชื่อมต่อโดยรวมสำเร็จ แต่ students ยังไม่ได้ — ปล่อยแบนเนอร์แดงไว้เตือน (studentsLoadOk ยังเป็น false)
+        setLoaded(true);
+      }
+    }
+    loadWithRetry();
+    return ()=>{cancelled=true;};
   },[]);
 
   // debounce save — รอ 1 วินาทีหลังเปลี่ยนค่า
@@ -4101,7 +4136,7 @@ export default function App(){
         </div>
       )}
       <div style={{position:"relative",zIndex:1,minHeight:"100vh"}}>
-        <TopNav user={navUser} role={role} page={page} setPage={setPage} onLogout={handleLogout} room={currentRoom} assignments={assignments}/>
+        <TopNav user={navUser} role={role} page={page} setPage={setPage} onLogout={handleLogout} room={currentRoom} assignments={assignments} studentsLoadOk={studentsLoadOk}/>
         <main>
           <PageHeader page={page} setPage={setPage}/>
           {loaded&&!dataLoadOk&&(
@@ -4122,9 +4157,9 @@ export default function App(){
           {role==="teacher"&&page==="students"     &&<TeacherStudents students={students} assignments={assignments} setStudents={setStudents} studentsLoadOk={studentsLoadOk}/>}
           {role==="teacher"&&page==="t-assignments"&&<TeacherAssignments assignments={assignments} setAssignments={setAssignments} students={students} setStudents={setStudents} skipNextSave={skipNextSave} refreshFromSheet={refreshFromSheet}/>}
           {role==="teacher"&&page==="t-resources"  &&<TeacherResources resources={resources} setResources={setResources}/>}
-          {role==="teacher"&&page==="t-scores"     &&<TeacherScores students={students} setStudents={setStudents} assignments={assignments}/>}
-          {role==="teacher"&&page==="t-exam"       &&<TeacherExamScores students={students} setStudents={setStudents}/>}
-          {role==="teacher"&&page==="t-grades"     &&<TeacherGrades students={students} setStudents={setStudents} assignments={assignments}/>}
+          {role==="teacher"&&page==="t-scores"     &&<TeacherScores students={students} setStudents={setStudents} assignments={assignments} studentsLoadOk={studentsLoadOk}/>}
+          {role==="teacher"&&page==="t-exam"       &&<TeacherExamScores students={students} setStudents={setStudents} studentsLoadOk={studentsLoadOk}/>}
+          {role==="teacher"&&page==="t-grades"     &&<TeacherGrades students={students} setStudents={setStudents} assignments={assignments} studentsLoadOk={studentsLoadOk}/>}
           {role==="teacher"&&page==="t-airdrop"    &&<TeacherAirdrop students={students} setPendingAirdrop={setPendingAirdrop} setStudents={setStudents} studentsLoadOk={studentsLoadOk}/>}
           {role==="teacher"&&page==="ranking"      &&<RankingPage students={students} myId={undefined} isTeacher={true} assignments={assignments}/>}
         </main>
