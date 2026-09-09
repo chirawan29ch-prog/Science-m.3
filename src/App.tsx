@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 // GLOBAL CSS — โทนสว่างขึ้น 20%
 // ─────────────────────────────────────────────
 const G = `
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Share+Tech+Mono&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Share+Tech+Mono&family=Noto+Sans+Thai:wght@400;500;600;700&family=Sarabun:wght@400;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0f1e35;--bg2:#162840;--bg3:#1e3454;--bg4:#2a4268;
@@ -62,6 +62,14 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans Thai',sans-se
 select.input option{background:#1e3454}
 .overlay{position:fixed;inset:0;background:rgba(8,18,35,.85);backdrop-filter:blur(8px);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
 .divider{height:1px;background:var(--border);margin:14px 0}
+/* ─── สั่งพิมพ์รายงานทางการ (คะแนนดิบ) — ซ่อนทุกอย่างของเว็บ เหลือแค่ตารางรายงาน ─── */
+@media print{
+  body *{visibility:hidden}
+  #print-report-area,#print-report-area *{visibility:visible}
+  #print-report-area{position:absolute;left:0;top:0;width:100%}
+  .no-print{display:none!important}
+  @page{size:landscape;margin:10mm}
+}
 `;
 
 // ─────────────────────────────────────────────
@@ -71,7 +79,7 @@ const CHAPTERS = [
   {id:"CH1",label:"หน่วยที่ 1",title:"วิทยาศาสตร์กับการแก้ปัญหา",icon:"🔬",color:"#7de8d0",bg:"rgba(125,232,208,.06)"},
   {id:"CH2",label:"หน่วยที่ 2",title:"พันธุศาสตร์",icon:"🧬",color:"#c060e0",bg:"rgba(192,96,224,.06)"},
   {id:"CH3",label:"หน่วยที่ 3",title:"คลื่นและแสง",icon:"🌊",color:"#f0a0c0",bg:"rgba(240,160,192,.06)"},
-  {id:"CH4",label:"หน่วยที่ 4",title:"ระบบสุริยะของเรา",icon:"🌌",color:"#f5cc70",bg:"rgba(245,204,112,.06)"},
+  {id:"CH4",label:"หน่วยที่ 4",title:"ปฏิสัมพันธ์ในระบบสุริยะ",icon:"🌌",color:"#f5cc70",bg:"rgba(245,204,112,.06)"},
 ];
 
 const XP_RANKS = [
@@ -1648,9 +1656,24 @@ function GradeChart({students,assignments}){
 function TeacherOverview({students,assignments,setPage,maxXp,onEditMaxXp}:any){
   const avgXP=Math.round(students.reduce((a,s)=>a+getEffectiveXP(s,assignments),0)/students.length);
   const passing=students.filter(s=>parseFloat(getRank(getEffectiveXP(s,assignments)).grade)>0).length;
+  // ดาวน์โหลดข้อมูลนักเรียนปัจจุบันเก็บไว้ในเครื่อง — สำรองอิสระ ไม่พึ่งอะไรฝั่งเซิร์ฟเวอร์เลย
+  // ครูควรกดเก็บไว้เป็นระยะๆ โดยเฉพาะหลังให้คะแนนชุดใหญ่ๆ เผื่อไว้กู้คืนเองได้ทันทีถ้าเกิดปัญหา
+  function downloadBackup(){
+    const payload=JSON.stringify({backupAt:new Date().toISOString(),students,assignments},null,2);
+    const blob=new Blob([payload],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    const stamp=new Date().toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit",year:"numeric"}).replace(/\//g,"-");
+    a.href=url;a.download=`physics-battleground-backup-${stamp}.json`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
   return(
     <div className="fade-up" style={{padding:20,maxWidth:1000,margin:"0 auto"}}>
-      <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3,marginBottom:16}}>COMMANDER OVERVIEW</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
+        <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3}}>COMMANDER OVERVIEW</div>
+        <button className="btn-ghost" onClick={downloadBackup} style={{fontSize:12,padding:"8px 16px",borderColor:"rgba(94,200,126,.4)",color:"var(--green)"}}>💾 ดาวน์โหลดข้อมูลสำรอง</button>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:12,marginBottom:20}}>
         {[{icon:"👥",label:"นักเรียน",val:students.length,color:"var(--cyan)"},{icon:"✅",label:"ผ่านเกณฑ์",val:passing,color:"var(--green)"},{icon:"❌",label:"ไม่ผ่าน",val:students.length-passing,color:"var(--red)"},{icon:"⭐",label:"XP เฉลี่ย",val:avgXP.toLocaleString(),color:"#f0a0c0"},{icon:"📋",label:"งาน",val:assignments.length,color:"var(--purple)"}].map((s,i)=>(
           <div key={i} className="card" style={{textAlign:"center",borderColor:`${s.color}38`}}>
@@ -1702,7 +1725,7 @@ function TeacherOverview({students,assignments,setPage,maxXp,onEditMaxXp}:any){
 // ─────────────────────────────────────────────
 // TEACHER: STUDENTS
 // ─────────────────────────────────────────────
-function TeacherStudents({students,assignments,setStudents}){
+function TeacherStudents({students,assignments,setStudents,studentsLoadOk}){
   const [sel,setSel]=useState(null);
   useEffect(()=>{window.scrollTo(0,0);},[sel]);
   const [editXpModal,setEditXpModal]=useState(false);
@@ -1712,6 +1735,7 @@ function TeacherStudents({students,assignments,setStudents}){
   const [editLogModal,setEditLogModal]=useState<any>(null); // {idx, xp, activity}
   const s=sel?students.find(x=>x.id===sel):null;
   function removeAirdrop(studentId,idx){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     setStudents(prev=>{
       const updated=prev.map(s=>s.id===studentId?{...s,inventory:s.inventory.filter((_,i)=>i!==idx)}:s);
       gasSave("saveStudents",updated);
@@ -1719,6 +1743,7 @@ function TeacherStudents({students,assignments,setStudents}){
     });
   }
   function saveEditXp(){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     if(!s)return;
     const val=Number(newXp);
     if(isNaN(val)||val<0){setXpMsg({t:"err",text:"กรุณาใส่ตัวเลขที่ถูกต้อง"});return;}
@@ -1740,6 +1765,7 @@ function TeacherStudents({students,assignments,setStudents}){
   }
 
   function recalcXp(targetStu:any){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     const correct=calcCorrectXp(targetStu);
     const fromSubs=Object.values(targetStu.submissions||{}).reduce((sum:number,sub:any)=>
       sum+(sub?.graded?(sub.xpEarned||0):0),0);
@@ -1770,6 +1796,7 @@ function TeacherStudents({students,assignments,setStudents}){
   }
 
   function recalcAllXp(){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     const preview=(students as any[]).map(st=>{
       const correct=calcCorrectXp(st);
       return{id:st.id,name:st.name,old:st.xp,correct,diff:correct-st.xp};
@@ -1787,6 +1814,7 @@ function TeacherStudents({students,assignments,setStudents}){
 
   // แก้ไข submission XP + maxXp
   function saveEditSub(){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     if(!s||!editSubModal)return;
     const{assignmentId,xpEarned,maxXp}=editSubModal;
     const newXpEarned=Number(xpEarned);
@@ -1810,6 +1838,7 @@ function TeacherStudents({students,assignments,setStudents}){
 
   // แก้ไข xpLog รายกิจกรรม
   function saveEditLog(){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     if(!s||!editLogModal)return;
     const{idx,xp,maxXp,activity}=editLogModal;
     const newXpVal=Number(xp);
@@ -2979,6 +3008,11 @@ function TeacherGrades({students,setStudents,assignments}){
   const [tabG,setTabG]=useState("score");
   useEffect(()=>{window.scrollTo(0,0);},[tabG]);
   const [maxPP,setMaxPP]=useState(20);
+  // ─── ข้อมูลหัวกระดาษรายงานทางการ (ไม่ได้เก็บในระบบ ให้ครูกรอกเองก่อนพิมพ์แต่ละครั้ง) ───
+  const [rptSchool,setRptSchool]=useState("โรงเรียน..............................................");
+  const [rptSubject,setRptSubject]=useState("รายวิชา.......................................... รหัสวิชา....................");
+  const [rptClass,setRptClass]=useState("ชั้น..........................");
+  const [rptTerm,setRptTerm]=useState("ภาคเรียนที่ .......... ปีการศึกษา ..........");
   // คะแนน pre/post-test เก็บตรงในตัวนักเรียนแต่ละคน (student.pretest/posttest) แล้วบันทึกทันทีที่แก้
   // เพื่อให้รอดจากการสลับแท็บ/รีเฟรชหน้า เหมือนข้อมูลอื่นๆ ในระบบ (ไม่ใช่ state ชั่วคราวเหมือนเดิม)
   function getPP(st:any){return{pre:st.pretest??null,post:st.posttest??null};}
@@ -3150,11 +3184,84 @@ function TeacherGrades({students,setStudents,assignments}){
   const ppTotal=ppStudents.length;
   const ppPct=(n:number)=>ppTotal?Math.round(n/ppTotal*1000)/10:0;
 
+  // ─── สร้างคอลัมน์รายการ (ใบงาน + กิจกรรม) แยกตามช่วงก่อน/หลังกลางภาค สำหรับรายงานทางการ (ใช้ filteredG ตามห้องที่เลือก) ───
+  function buildPhaseItems(phase:string){
+    const phaseAssign=(assignments||[]).filter((a:any)=>(a.phase||"before")===phase);
+    const actNames:string[]=[...new Set((filteredG||[]).flatMap((s:any)=>(s.xpLog||[]).filter((l:any)=>(l.phase||"before")===phase).map((l:any)=>l.activity)))];
+    const assignItems=phaseAssign.map((a:any)=>({
+      key:"a_"+a.id,name:a.title,max:xpToScore(a.xp,9999),
+      score:(s:any)=>{const sub=s.submissions?.[a.id];return sub?.graded?xpToScore(sub.xpEarned,9999):0;}
+    }));
+    const actItems=actNames.map((name:any)=>{
+      const maxXpVal=Math.max(0,...(filteredG||[]).flatMap((s:any)=>(s.xpLog||[]).filter((l:any)=>l.activity===name).map((l:any)=>l.maxXp||l.xp||0)));
+      return{
+        key:"act_"+name,name,max:xpToScore(maxXpVal,9999),
+        score:(s:any)=>{const log=(s.xpLog||[]).find((l:any)=>l.activity===name);return log?xpToScore(log.xp,9999):0;}
+      };
+    });
+    return[...assignItems,...actItems];
+  }
+  const beforeItems=buildPhaseItems("before");
+  const afterItems=buildPhaseItems("after");
+  // ─── จัดลำดับ/ซ่อน-แสดงคอลัมน์รายงานได้เอง — ดีฟอลต์ตามลำดับที่ตรวจพบ แต่ครูปรับเองได้ก่อนพิมพ์แต่ละครั้ง ───
+  const[beforeOrder,setBeforeOrder]=useState<{key:string,visible:boolean}[]>([]);
+  const[afterOrder,setAfterOrder]=useState<{key:string,visible:boolean}[]>([]);
+  const beforeKeysSig=beforeItems.map((it:any)=>it.key).join("|");
+  const afterKeysSig=afterItems.map((it:any)=>it.key).join("|");
+  useEffect(()=>{
+    setBeforeOrder(prev=>{
+      const stillExist=prev.filter(o=>beforeItems.some((it:any)=>it.key===o.key));
+      const existingKeys=new Set(stillExist.map(o=>o.key));
+      const newOnes=beforeItems.filter((it:any)=>!existingKeys.has(it.key)).map((it:any)=>({key:it.key,visible:true}));
+      return[...stillExist,...newOnes];
+    });
+  },[beforeKeysSig]);
+  useEffect(()=>{
+    setAfterOrder(prev=>{
+      const stillExist=prev.filter(o=>afterItems.some((it:any)=>it.key===o.key));
+      const existingKeys=new Set(stillExist.map(o=>o.key));
+      const newOnes=afterItems.filter((it:any)=>!existingKeys.has(it.key)).map((it:any)=>({key:it.key,visible:true}));
+      return[...stillExist,...newOnes];
+    });
+  },[afterKeysSig]);
+  function moveOrder(setFn:any,idx:number,dir:number){
+    setFn((prev:any[])=>{
+      const next=[...prev];
+      const j=idx+dir;
+      if(j<0||j>=next.length)return prev;
+      [next[idx],next[j]]=[next[j],next[idx]];
+      return next;
+    });
+  }
+  function toggleVisible(setFn:any,key:string){
+    setFn((prev:any[])=>prev.map(o=>o.key===key?{...o,visible:!o.visible}:o));
+  }
+  const beforeShown=(beforeOrder.length?beforeOrder:beforeItems.map((it:any)=>({key:it.key,visible:true})))
+    .filter(o=>o.visible).map(o=>beforeItems.find((it:any)=>it.key===o.key)).filter(Boolean);
+  const afterShown=(afterOrder.length?afterOrder:afterItems.map((it:any)=>({key:it.key,visible:true})))
+    .filter(o=>o.visible).map(o=>afterItems.find((it:any)=>it.key===o.key)).filter(Boolean);
+  function subtotal(s:any,items:any[],cap:number){return Math.min(cap,items.reduce((sum,it)=>sum+it.score(s),0));}
+  const rBefore=(s:any)=>subtotal(s,beforeItems,35);
+  const rAfter=(s:any)=>subtotal(s,afterItems,35);
+  const rMid=(s:any)=>s.midterm??0;
+  const rFinal=(s:any)=>s.final??0;
+  const rGrand=(s:any)=>rBefore(s)+rMid(s)+rAfter(s)+rFinal(s);
+  const rGradeOf=(s:any)=>getGrade(rGrand(s));
+  const reportStudents=[...filteredG].sort((a:any,b:any)=>Number(a.password||0)-Number(b.password||0));
+  const rptTh:React.CSSProperties={border:"1px solid #000",padding:"4px 6px",fontSize:16,fontWeight:700,textAlign:"center",background:"#f0f0f0",wordBreak:"normal",overflowWrap:"normal"};
+  const rptTd:React.CSSProperties={border:"1px solid #000",padding:"4px 6px",fontSize:16,textAlign:"center",wordBreak:"normal",overflowWrap:"normal"};
+  // ชื่อรายการใบงาน/กิจกรรมอาจยาว ลดขนาดเหลือ 14 ได้ถ้าตัวใหญ่ไม่พอ แต่ยังต้องตัดคำถูกหลักภาษาไทย (ไม่ตัดกลางคำมั่ว)
+  const rptThItem:React.CSSProperties={border:"1px solid #000",padding:"4px 6px",fontSize:14,fontWeight:700,textAlign:"center",background:"#f0f0f0",wordBreak:"normal",overflowWrap:"normal"};
+  // โทนสีอ่อนสบายตาสำหรับแต่ละช่วงคะแนน (พื้นกระดาษขาว) — ใช้แนวสีเดียวกับตารางคะแนนในหน้าเว็บ แต่จางลงให้เหมาะกับพิมพ์
+  const rptC={before:"#f3e8ff",beforeTot:"#e9d5ff",mid:"#e0f2fe",midTot:"#bfdbfe",after:"#fce7f3",afterTot:"#fbcfe8",final:"#fef9c3",grand:"#fde68a",grade:"#dcfce7"};
+  function tint(base:React.CSSProperties,bg:string):React.CSSProperties{return{...base,background:bg};}
+
   return(
     <div className="fade-up" style={{padding:20,maxWidth:1000,margin:"0 auto"}}>
       <div style={{display:"flex",borderBottom:"1px solid var(--border)",marginBottom:20}}>
         <button style={tabStyleG("score")} onClick={()=>setTabG("score")}>📊 คะแนน</button>
         <button style={tabStyleG("prepost")} onClick={()=>setTabG("prepost")}>👥 Pre/Post-test</button>
+        <button style={tabStyleG("report")} onClick={()=>setTabG("report")}>📄 รายงานทางการ</button>
       </div>
 
       {/* Room filter */}
@@ -3397,11 +3504,111 @@ function TeacherGrades({students,setStudents,assignments}){
           </div>
         </div>
       )}
+
+      {tabG==="report"&&(
+        <div>
+          <div className="no-print" style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,padding:16,marginBottom:16}}>
+            <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:12}}>📄 กรอกข้อมูลหัวกระดาษก่อนพิมพ์ — ตอนนี้กำลังเลือกห้อง: {selRoomG==="all"?"ทุกห้อง":ROOMS.find((r:any)=>r.id===selRoomG)?.label}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginBottom:12}}>
+              {[["ชื่อโรงเรียน",rptSchool,setRptSchool],["รายวิชา / รหัสวิชา",rptSubject,setRptSubject],["ชั้น",rptClass,setRptClass],["ภาคเรียน / ปีการศึกษา",rptTerm,setRptTerm]].map(([l,v,s]:any)=>(
+                <div key={l}>
+                  <label className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:1,display:"block",marginBottom:5}}>{l}</label>
+                  <input className="input" value={v} onChange={e=>s(e.target.value)} style={{fontSize:13}}/>
+                </div>
+              ))}
+            </div>
+            <button className="btn btn-gold" onClick={()=>window.print()} style={{fontSize:14,padding:"10px 24px"}}>🖨️ พิมพ์ / บันทึกเป็น PDF</button>
+            <div style={{fontSize:11,color:"var(--muted)",marginTop:8}}>💡 ตารางกว้างมาก แนะนำตั้งค่าพิมพ์เป็นแนวนอน (Landscape) และ "พอดีหน้ากระดาษ" ในหน้าต่างพิมพ์ของเบราว์เซอร์ — ถ้าอยากพิมพ์ทีละห้อง ให้เปลี่ยน "เลือกห้อง" ด้านบนสุดของหน้านี้ก่อน</div>
+          </div>
+
+          <div className="no-print" style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,padding:16,marginBottom:16}}>
+            <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:2,marginBottom:12}}>⚙️ จัดลำดับ/เลือกคอลัมน์ที่จะแสดงในรายงาน (ปรับได้เอง)</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
+              <div>
+                <div style={{fontSize:12,color:"#a78bfa",marginBottom:8,fontWeight:700}}>🟣 ก่อนกลางภาค</div>
+                {beforeOrder.map((o,i)=>{const it:any=beforeItems.find((x:any)=>x.key===o.key);if(!it)return null;return(
+                  <div key={o.key} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",marginBottom:4,
+                    background:o.visible?"rgba(167,139,250,.08)":"rgba(255,255,255,.03)",borderRadius:6,opacity:o.visible?1:.5}}>
+                    <input type="checkbox" checked={o.visible} onChange={()=>toggleVisible(setBeforeOrder,o.key)} style={{accentColor:"#a78bfa"}}/>
+                    <span style={{flex:1,fontSize:12,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</span>
+                    <button onClick={()=>moveOrder(setBeforeOrder,i,-1)} disabled={i===0} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===0?"default":"pointer",opacity:i===0?.3:1,fontSize:14,padding:"0 4px"}}>▲</button>
+                    <button onClick={()=>moveOrder(setBeforeOrder,i,1)} disabled={i===beforeOrder.length-1} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===beforeOrder.length-1?"default":"pointer",opacity:i===beforeOrder.length-1?.3:1,fontSize:14,padding:"0 4px"}}>▼</button>
+                  </div>
+                );})}
+              </div>
+              <div>
+                <div style={{fontSize:12,color:"#f472b6",marginBottom:8,fontWeight:700}}>🔵 หลังกลางภาค</div>
+                {afterOrder.map((o,i)=>{const it:any=afterItems.find((x:any)=>x.key===o.key);if(!it)return null;return(
+                  <div key={o.key} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",marginBottom:4,
+                    background:o.visible?"rgba(244,114,182,.08)":"rgba(255,255,255,.03)",borderRadius:6,opacity:o.visible?1:.5}}>
+                    <input type="checkbox" checked={o.visible} onChange={()=>toggleVisible(setAfterOrder,o.key)} style={{accentColor:"#f472b6"}}/>
+                    <span style={{flex:1,fontSize:12,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</span>
+                    <button onClick={()=>moveOrder(setAfterOrder,i,-1)} disabled={i===0} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===0?"default":"pointer",opacity:i===0?.3:1,fontSize:14,padding:"0 4px"}}>▲</button>
+                    <button onClick={()=>moveOrder(setAfterOrder,i,1)} disabled={i===afterOrder.length-1} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===afterOrder.length-1?"default":"pointer",opacity:i===afterOrder.length-1?.3:1,fontSize:14,padding:"0 4px"}}>▼</button>
+                  </div>
+                );})}
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"var(--muted)",marginTop:10}}>💡 ติ๊กออกเพื่อซ่อนคอลัมน์นั้นจากรายงาน (ยอดรวม/เกรดยังคำนวณจากทุกรายการเหมือนเดิม ไม่กระทบคะแนนจริง) กด ▲▼ เพื่อสลับลำดับ</div>
+          </div>
+
+          <div id="print-report-area" lang="th" style={{background:"#fff",color:"#000",padding:24,borderRadius:8,overflowX:"auto",fontFamily:"'TH Sarabun PSK',sans-serif",wordBreak:"normal",overflowWrap:"normal",lineBreak:"strict"}}>
+            <div style={{textAlign:"center",marginBottom:4,fontSize:18,fontWeight:700}}>{rptSchool}</div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:16,marginBottom:2}}>
+              <span>คะแนนนักเรียน{rptClass} {selRoomG==="all"?"":`(${ROOMS.find((r:any)=>r.id===selRoomG)?.label})`}</span><span>{rptTerm}</span>
+            </div>
+            <div style={{textAlign:"left",fontSize:16,marginBottom:14}}>{rptSubject}</div>
+            <table style={{borderCollapse:"collapse",width:"100%",fontSize:16}}>
+              <thead>
+                <tr>
+                  <th rowSpan={2} style={rptTh}>ลำดับ</th>
+                  <th rowSpan={2} style={rptTh}>เลขประจำตัว</th>
+                  <th rowSpan={2} style={{...rptTh,textAlign:"left",whiteSpace:"nowrap"}}>ชื่อ-สกุล</th>
+                  <th colSpan={beforeShown.length+2} style={tint(rptTh,rptC.before)}>ก่อนกลางภาค (35)</th>
+                  <th rowSpan={2} style={tint(rptTh,rptC.mid)}>สอบกลางภาค (15)</th>
+                  <th rowSpan={2} style={tint(rptTh,rptC.midTot)}>รวมกลางภาค (50)</th>
+                  <th colSpan={afterShown.length+1} style={tint(rptTh,rptC.after)}>หลังกลางภาค (35)</th>
+                  <th rowSpan={2} style={tint(rptTh,rptC.final)}>สอบปลายภาค (15)</th>
+                  <th rowSpan={2} style={tint(rptTh,rptC.grand)}>รวม (100)</th>
+                  <th rowSpan={2} style={tint(rptTh,rptC.grade)}>เกรด</th>
+                </tr>
+                <tr>
+                  {beforeShown.map((it:any)=><th key={it.key} style={tint(rptThItem,rptC.before)}>{it.name}<br/>({it.max})</th>)}
+                  <th style={tint(rptTh,rptC.beforeTot)}>รวม</th>
+                  {afterShown.map((it:any)=><th key={it.key} style={tint(rptThItem,rptC.after)}>{it.name}<br/>({it.max})</th>)}
+                  <th style={tint(rptTh,rptC.afterTot)}>รวม</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reportStudents.map((s:any,i:number)=>(
+                  <tr key={s.id}>
+                    <td style={rptTd}>{i+1}</td>
+                    <td style={rptTd}>{s.password}</td>
+                    <td style={{...rptTd,textAlign:"left",whiteSpace:"nowrap"}}>{s.name}</td>
+                    {beforeShown.map((it:any)=><td key={it.key} style={tint(rptTd,rptC.before)}>{it.score(s)}</td>)}
+                    <td style={tint({...rptTd,fontWeight:700},rptC.beforeTot)}>{rBefore(s)}</td>
+                    <td style={tint(rptTd,rptC.mid)}>{s.midterm??"—"}</td>
+                    <td style={tint({...rptTd,fontWeight:700},rptC.midTot)}>{rBefore(s)+rMid(s)}</td>
+                    {afterShown.map((it:any)=><td key={it.key} style={tint(rptTd,rptC.after)}>{it.score(s)}</td>)}
+                    <td style={tint({...rptTd,fontWeight:700},rptC.afterTot)}>{rAfter(s)}</td>
+                    <td style={tint(rptTd,rptC.final)}>{s.final??"—"}</td>
+                    <td style={tint({...rptTd,fontWeight:700},rptC.grand)}>{rGrand(s)}</td>
+                    <td style={tint({...rptTd,fontWeight:700},rptC.grade)}>{rGradeOf(s)??"—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{display:"flex",justifyContent:"center",marginTop:60,fontSize:16}}>
+              <div style={{textAlign:"center"}}>ลงชื่อ..........................................ผู้สอน<br/><br/>(..........................................)</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function TeacherAirdrop({students,setPendingAirdrop,setStudents}){
+function TeacherAirdrop({students,setPendingAirdrop,setStudents,studentsLoadOk}){
   const DEFAULT_POOL=[
     {id:"r1",name:"AWM Sniper Rifle",icon:"🔫",rarity:"LEGENDARY",color:"#f5cc70"},
     {id:"r2",name:"Level 3 Helmet",icon:"⛑️",rarity:"EPIC",color:"#a569bd"},
@@ -3474,6 +3681,7 @@ function TeacherAirdrop({students,setPendingAirdrop,setStudents}){
     .sort((a:any,b:any)=>a.receivedAt>b.receivedAt?-1:1);
 
   function removeAirdropHistory(studentId:string,idx:number){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     if(!window.confirm("ลบ Airdrop นี้ออกจาก inventory ของนักเรียน?"))return;
     setStudents(prev=>{
       const updated=prev.map(s=>s.id===studentId?{...s,inventory:s.inventory.filter((_:any,i:number)=>i!==idx)}:s);
@@ -3844,6 +4052,7 @@ export default function App(){
 
   useEffect(()=>{
     if(!pendingAirdrop)return;
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนส่ง Airdrop (เพื่อป้องกันข้อมูลเสียหาย)");setPendingAirdrop(null);return;}
     const{targetStudentId,...item}=pendingAirdrop as any;
     // เพิ่ม inventory พร้อม seen:false เสมอ
     setStudents(prev=>{
@@ -3857,7 +4066,7 @@ export default function App(){
       setTimeout(()=>setActivePopup({...item}),300);
     }
     setPendingAirdrop(null);
-  },[pendingAirdrop]);
+  },[pendingAirdrop,studentsLoadOk]);
 
   const{role,userId}=auth||{};
   const currentStudent=students.find(s=>s.id===userId);
@@ -3910,13 +4119,13 @@ export default function App(){
           {role==="student"&&page==="inventory"    &&currentStudent&&<StudentInventory student={currentStudent}/>}
           {role==="student"&&page==="settings"     &&currentStudent&&<StudentSettings student={currentStudent} setStudents={setStudents}/>}
           {role==="teacher"&&page==="overview"     &&<TeacherOverview students={students} assignments={assignments} setPage={setPage} maxXp={maxXpSetting} onEditMaxXp={()=>{setMaxXpInput(String(maxXpSetting));setMaxXpModal(true);}}/>}
-          {role==="teacher"&&page==="students"     &&<TeacherStudents students={students} assignments={assignments} setStudents={setStudents}/>}
+          {role==="teacher"&&page==="students"     &&<TeacherStudents students={students} assignments={assignments} setStudents={setStudents} studentsLoadOk={studentsLoadOk}/>}
           {role==="teacher"&&page==="t-assignments"&&<TeacherAssignments assignments={assignments} setAssignments={setAssignments} students={students} setStudents={setStudents} skipNextSave={skipNextSave} refreshFromSheet={refreshFromSheet}/>}
           {role==="teacher"&&page==="t-resources"  &&<TeacherResources resources={resources} setResources={setResources}/>}
           {role==="teacher"&&page==="t-scores"     &&<TeacherScores students={students} setStudents={setStudents} assignments={assignments}/>}
           {role==="teacher"&&page==="t-exam"       &&<TeacherExamScores students={students} setStudents={setStudents}/>}
           {role==="teacher"&&page==="t-grades"     &&<TeacherGrades students={students} setStudents={setStudents} assignments={assignments}/>}
-          {role==="teacher"&&page==="t-airdrop"    &&<TeacherAirdrop students={students} setPendingAirdrop={setPendingAirdrop} setStudents={setStudents}/>}
+          {role==="teacher"&&page==="t-airdrop"    &&<TeacherAirdrop students={students} setPendingAirdrop={setPendingAirdrop} setStudents={setStudents} studentsLoadOk={studentsLoadOk}/>}
           {role==="teacher"&&page==="ranking"      &&<RankingPage students={students} myId={undefined} isTeacher={true} assignments={assignments}/>}
         </main>
       </div>
