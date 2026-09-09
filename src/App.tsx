@@ -3853,30 +3853,32 @@ const img2 = "https://i.postimg.cc/RVGwSXJh/a8d4de59513d2b1ca0a346c0c7fd039c.jpg
 const img3 = "https://i.postimg.cc/13kXsqB0/wp13416836.png";
 
 
-async function gasGet(){
-  try{
-    // GET ไม่ต้องใช้ no-cors — GAS อนุญาต GET ปกติ
-    // ใส่ timestamp กันแคช + cache:"no-store" — กันเบราว์เซอร์หยิบข้อมูลเก่าที่เคย cache ไว้มาโชว์แทนของจริง
-    // (ปัญหา "รีเฟรชธรรมดาแล้วข้อมูลเก่ากลับมา" มักเกิดจากเบราว์เซอร์แคช GET request ไว้)
-    const r=await fetch(GAS_URL+"?action=getAll&_t="+Date.now(),{cache:"no-store"});
+async function gasGet() {
+  try {
+    const r = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "getAll" })
+    });
     return await r.json();
-  }catch(e){
-    console.error("gasGet error:",e);
-    return null;
-  }
+  } catch(e) { return null; }
 }
 
-async function gasSave(action,data){
-  try{
-    // POST ต้องใช้ no-cors + Content-Type: text/plain
-    await fetch(GAS_URL,{
-      method:"POST",
-      mode:"no-cors",
-      headers:{"Content-Type":"text/plain"},
-      body:JSON.stringify({action,data:JSON.stringify(data)})
+
+async function gasSave(action: string, data: any) {
+  try {
+    const r = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({ action, data: JSON.stringify(data) })
     });
-  }catch(e){
-    console.error("gasSave error:",e);
+    const res = await r.json();
+    if (res.error) {
+      alert("⚠️ บันทึกข้อมูลผิดพลาด: " + res.error);
+      return { success: false };
+    }
+    return { success: true };
+  } catch(e) {
+    alert("⚠️ เชื่อมต่อ Google ไม่ได้");
+    return { success: false };
   }
 }
 
