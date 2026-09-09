@@ -2631,6 +2631,11 @@ function TeacherScores({students,setStudents,assignments,studentsLoadOk}){
     }));
   }
   function finishGroup(){
+    // ถ้ามีคนที่เลือก+กรอกคะแนนไว้แล้วแต่ยังไม่ได้กด "บันทึกกลุ่มนี้" ให้เตือนก่อนทิ้ง กันพลาดกดเสร็จสิ้นเผลอทิ้งข้อมูลที่กรอกไว้
+    const pendingCount=selectedIds().length;
+    if(pendingCount>0){
+      if(!window.confirm(`มีนักเรียนที่เลือกไว้ ${pendingCount} คน ยังไม่ได้กด "บันทึกกลุ่มนี้" — ถ้ากด "เสร็จสิ้น" ตอนนี้ข้อมูลที่กรอกไว้จะหายไปทันที (ไม่ถูกบันทึก) ต้องการดำเนินการต่อไหม?`))return;
+    }
     setMaxXpAmt("");setActivityName("");setSelChapter("CH1");setSelPhase("before");
     setSelected({});setPerStuXp({});setBulkFillValue("");
   }
@@ -3221,8 +3226,27 @@ function TeacherGrades({students,setStudents,assignments,studentsLoadOk}){
     });
     return[...assignItems,...actItems];
   }
-  const beforeItems=buildPhaseItems("before");
-  const afterItems=buildPhaseItems("after");
+  // ─── คอลัมน์ที่ครูเพิ่มเอง (ไม่ผูกกับข้อมูลใบงาน/กิจกรรมในระบบ) — กรอกคะแนนแยกเฉพาะสำหรับรายงานนี้ ───
+  const[customCols,setCustomCols]=useState<{key:string,name:string,max:number,phase:string,scores:any}[]>([]);
+  function addCustomCol(phase:string){
+    const key="custom_"+Date.now();
+    setCustomCols(prev=>[...prev,{key,name:"รายการใหม่",max:10,phase,scores:{}}]);
+  }
+  function updateCustomCol(key:string,field:string,value:any){
+    setCustomCols(prev=>prev.map(c=>c.key===key?{...c,[field]:value}:c));
+  }
+  function setCustomScore(key:string,studentId:string,value:string){
+    setCustomCols(prev=>prev.map(c=>c.key===key?{...c,scores:{...c.scores,[studentId]:value}}:c));
+  }
+  function removeCustomCol(key:string){
+    setCustomCols(prev=>prev.filter(c=>c.key!==key));
+  }
+  const beforeItemsAuto=buildPhaseItems("before");
+  const afterItemsAuto=buildPhaseItems("after");
+  const customBeforeItems=customCols.filter(c=>c.phase==="before").map(c=>({key:c.key,name:c.name,max:c.max,score:(s:any)=>Number(c.scores[s.id])||0,isCustom:true}));
+  const customAfterItems=customCols.filter(c=>c.phase==="after").map(c=>({key:c.key,name:c.name,max:c.max,score:(s:any)=>Number(c.scores[s.id])||0,isCustom:true}));
+  const beforeItems=[...beforeItemsAuto,...customBeforeItems];
+  const afterItems=[...afterItemsAuto,...customAfterItems];
   // ─── จัดลำดับ/ซ่อน-แสดงคอลัมน์รายงานได้เอง — ดีฟอลต์ตามลำดับที่ตรวจพบ แต่ครูปรับเองได้ก่อนพิมพ์แต่ละครั้ง ───
   const[beforeOrder,setBeforeOrder]=useState<{key:string,visible:boolean}[]>([]);
   const[afterOrder,setAfterOrder]=useState<{key:string,visible:boolean}[]>([]);
@@ -3275,6 +3299,66 @@ function TeacherGrades({students,setStudents,assignments,studentsLoadOk}){
   // โทนสีอ่อนสบายตาสำหรับแต่ละช่วงคะแนน (พื้นกระดาษขาว) — ใช้แนวสีเดียวกับตารางคะแนนในหน้าเว็บ แต่จางลงให้เหมาะกับพิมพ์
   const rptC={before:"#f3e8ff",beforeTot:"#e9d5ff",mid:"#e0f2fe",midTot:"#bfdbfe",after:"#fce7f3",afterTot:"#fbcfe8",final:"#fef9c3",grand:"#fde68a",grade:"#dcfce7"};
   function tint(base:React.CSSProperties,bg:string):React.CSSProperties{return{...base,background:bg};}
+
+  // ─── ส่งออกรายงานเป็นไฟล์ PowerPoint (.pptx) แก้ไขต่อได้ — โหลดไลบรารีจาก CDN ตอนกดใช้เท่านั้น ไม่กระทบขนาดเว็บปกติ ───
+  function loadPptxGenJS(){
+    return new Promise<any>((resolve,reject)=>{
+      if((window as any).PptxGenJS){resolve((window as any).PptxGenJS);return;}
+      const script=document.createElement("script");
+      script.src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js";
+      script.onload=()=>resolve((window as any).PptxGenJS);
+      script.onerror=()=>reject(new Error("โหลดไลบรารี PowerPoint ไม่สำเร็จ ลองเช็คอินเทอร์เน็ตแล้วลองใหม่"));
+      document.head.appendChild(script);
+    });
+  }
+  async function exportPPTX(){
+    let PptxGenJSCtor:any;
+    try{ PptxGenJSCtor=await loadPptxGenJS(); }
+    catch(e){ alert("โหลดไลบรารี PowerPoint ไม่สำเร็จ — เช็คอินเทอร์เน็ตแล้วลองอีกครั้ง"); return; }
+    const pptx=new PptxGenJSCtor();
+    pptx.defineLayout({name:"WIDE",width:13.33,height:7.5});
+    pptx.layout="WIDE";
+    const headerCells=[
+      {text:"ลำดับ",options:{bold:true,fill:{color:"F0F0F0"},fontSize:9}},
+      {text:"เลขประจำตัว",options:{bold:true,fill:{color:"F0F0F0"},fontSize:9}},
+      {text:"ชื่อ-สกุล",options:{bold:true,fill:{color:"F0F0F0"},fontSize:9}},
+      ...beforeShown.map((it:any)=>({text:`${it.name} (${it.max})`,options:{bold:true,fill:{color:"F3E8FF"},fontSize:8}})),
+      {text:"รวม",options:{bold:true,fill:{color:"E9D5FF"},fontSize:9}},
+      {text:"สอบกลางภาค (15)",options:{bold:true,fill:{color:"E0F2FE"},fontSize:9}},
+      {text:"รวมกลางภาค (50)",options:{bold:true,fill:{color:"BFDBFE"},fontSize:9}},
+      ...afterShown.map((it:any)=>({text:`${it.name} (${it.max})`,options:{bold:true,fill:{color:"FCE7F3"},fontSize:8}})),
+      {text:"รวม",options:{bold:true,fill:{color:"FBCFE8"},fontSize:9}},
+      {text:"สอบปลายภาค (15)",options:{bold:true,fill:{color:"FEF9C3"},fontSize:9}},
+      {text:"รวม (100)",options:{bold:true,fill:{color:"FDE68A"},fontSize:9}},
+      {text:"เกรด",options:{bold:true,fill:{color:"DCFCE7"},fontSize:9}},
+    ];
+    function studentRow(s:any,i:number){
+      return[
+        {text:String(i+1),options:{fontSize:8}},
+        {text:String(s.password),options:{fontSize:8}},
+        {text:s.name,options:{fontSize:8}},
+        ...beforeShown.map((it:any)=>({text:String(it.score(s)),options:{fontSize:8}})),
+        {text:String(rBefore(s)),options:{fontSize:8,bold:true}},
+        {text:String(s.midterm??"—"),options:{fontSize:8}},
+        {text:String(rBefore(s)+rMid(s)),options:{fontSize:8,bold:true}},
+        ...afterShown.map((it:any)=>({text:String(it.score(s)),options:{fontSize:8}})),
+        {text:String(rAfter(s)),options:{fontSize:8,bold:true}},
+        {text:String(s.final??"—"),options:{fontSize:8}},
+        {text:String(rGrand(s)),options:{fontSize:8,bold:true}},
+        {text:String(rGradeOf(s)??"—"),options:{fontSize:8,bold:true}},
+      ];
+    }
+    const rowsPerSlide=18;
+    for(let i=0;i<reportStudents.length;i+=rowsPerSlide){
+      const slide=pptx.addSlide();
+      slide.addText(`${rptSchool} — ${rptSubject}`,{x:0.3,y:0.15,w:12.7,h:0.35,fontSize:14,bold:true,align:"center"});
+      const chunk=reportStudents.slice(i,i+rowsPerSlide);
+      const rows=[headerCells,...chunk.map((s:any,j:number)=>studentRow(s,i+j))];
+      slide.addTable(rows,{x:0.15,y:0.6,w:13.0,h:6.6,fontSize:8,border:{type:"solid",color:"999999",pt:0.5},autoPage:false,colW:undefined});
+    }
+    const stamp=new Date().toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit",year:"numeric"}).replace(/\//g,"-");
+    pptx.writeFile({fileName:`รายงานคะแนน-${stamp}.pptx`});
+  }
 
   return(
     <div className="fade-up" style={{padding:20,maxWidth:1000,margin:"0 auto"}}>
@@ -3546,30 +3630,71 @@ function TeacherGrades({students,setStudents,assignments,studentsLoadOk}){
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
               <div>
                 <div style={{fontSize:12,color:"#a78bfa",marginBottom:8,fontWeight:700}}>🟣 ก่อนกลางภาค</div>
-                {beforeOrder.map((o,i)=>{const it:any=beforeItems.find((x:any)=>x.key===o.key);if(!it)return null;return(
-                  <div key={o.key} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",marginBottom:4,
-                    background:o.visible?"rgba(167,139,250,.08)":"rgba(255,255,255,.03)",borderRadius:6,opacity:o.visible?1:.5}}>
-                    <input type="checkbox" checked={o.visible} onChange={()=>toggleVisible(setBeforeOrder,o.key)} style={{accentColor:"#a78bfa"}}/>
-                    <span style={{flex:1,fontSize:12,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</span>
-                    <button onClick={()=>moveOrder(setBeforeOrder,i,-1)} disabled={i===0} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===0?"default":"pointer",opacity:i===0?.3:1,fontSize:14,padding:"0 4px"}}>▲</button>
-                    <button onClick={()=>moveOrder(setBeforeOrder,i,1)} disabled={i===beforeOrder.length-1} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===beforeOrder.length-1?"default":"pointer",opacity:i===beforeOrder.length-1?.3:1,fontSize:14,padding:"0 4px"}}>▼</button>
+                {beforeOrder.map((o,i)=>{const it:any=beforeItems.find((x:any)=>x.key===o.key);if(!it)return null;
+                  const isCustom=it.isCustom;const custCol:any=isCustom?customCols.find(c=>c.key===o.key):null;
+                  return(
+                  <div key={o.key} style={{marginBottom:4}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",
+                      background:o.visible?"rgba(167,139,250,.08)":"rgba(255,255,255,.03)",borderRadius:6,opacity:o.visible?1:.5}}>
+                      <input type="checkbox" checked={o.visible} onChange={()=>toggleVisible(setBeforeOrder,o.key)} style={{accentColor:"#a78bfa"}}/>
+                      {isCustom?
+                        <input value={custCol?.name||""} onChange={e=>updateCustomCol(o.key,"name",e.target.value)}
+                          style={{flex:1,fontSize:12,background:"rgba(0,0,0,.2)",border:"1px solid rgba(167,139,250,.3)",borderRadius:4,color:"var(--text)",padding:"3px 6px"}}/>
+                        :<span style={{flex:1,fontSize:12,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</span>}
+                      {isCustom&&<input type="number" value={custCol?.max||0} onChange={e=>updateCustomCol(o.key,"max",Number(e.target.value)||0)}
+                        style={{width:44,fontSize:12,background:"rgba(0,0,0,.2)",border:"1px solid rgba(167,139,250,.3)",borderRadius:4,color:"var(--text)",padding:"3px 4px",textAlign:"center"}}/>}
+                      <button onClick={()=>moveOrder(setBeforeOrder,i,-1)} disabled={i===0} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===0?"default":"pointer",opacity:i===0?.3:1,fontSize:14,padding:"0 4px"}}>▲</button>
+                      <button onClick={()=>moveOrder(setBeforeOrder,i,1)} disabled={i===beforeOrder.length-1} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===beforeOrder.length-1?"default":"pointer",opacity:i===beforeOrder.length-1?.3:1,fontSize:14,padding:"0 4px"}}>▼</button>
+                      {isCustom&&<button onClick={()=>removeCustomCol(o.key)} style={{background:"transparent",border:"none",color:"var(--red)",cursor:"pointer",fontSize:13,padding:"0 4px"}}>🗑</button>}
+                    </div>
+                    {isCustom&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:4,padding:"6px 8px 2px 20px"}}>
+                      {students.map((s:any)=>(
+                        <div key={s.id} style={{display:"flex",alignItems:"center",gap:4}}>
+                          <span style={{fontSize:10,color:"var(--muted2)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name.split(" ").slice(1).join(" ")}</span>
+                          <input type="number" value={custCol?.scores?.[s.id]??""} placeholder="—" onChange={e=>setCustomScore(o.key,s.id,e.target.value)}
+                            style={{width:40,fontSize:11,background:"rgba(0,0,0,.25)",border:"1px solid rgba(167,139,250,.25)",borderRadius:4,color:"#a78bfa",padding:"2px 4px",textAlign:"center"}}/>
+                        </div>
+                      ))}
+                    </div>}
                   </div>
                 );})}
+                <button onClick={()=>addCustomCol("before")} className="btn-ghost" style={{fontSize:11,padding:"6px 12px",marginTop:6,borderColor:"rgba(167,139,250,.4)",color:"#a78bfa"}}>➕ เพิ่มคอลัมน์เอง</button>
               </div>
               <div>
                 <div style={{fontSize:12,color:"#f472b6",marginBottom:8,fontWeight:700}}>🔵 หลังกลางภาค</div>
-                {afterOrder.map((o,i)=>{const it:any=afterItems.find((x:any)=>x.key===o.key);if(!it)return null;return(
-                  <div key={o.key} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",marginBottom:4,
-                    background:o.visible?"rgba(244,114,182,.08)":"rgba(255,255,255,.03)",borderRadius:6,opacity:o.visible?1:.5}}>
-                    <input type="checkbox" checked={o.visible} onChange={()=>toggleVisible(setAfterOrder,o.key)} style={{accentColor:"#f472b6"}}/>
-                    <span style={{flex:1,fontSize:12,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</span>
-                    <button onClick={()=>moveOrder(setAfterOrder,i,-1)} disabled={i===0} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===0?"default":"pointer",opacity:i===0?.3:1,fontSize:14,padding:"0 4px"}}>▲</button>
-                    <button onClick={()=>moveOrder(setAfterOrder,i,1)} disabled={i===afterOrder.length-1} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===afterOrder.length-1?"default":"pointer",opacity:i===afterOrder.length-1?.3:1,fontSize:14,padding:"0 4px"}}>▼</button>
+                {afterOrder.map((o,i)=>{const it:any=afterItems.find((x:any)=>x.key===o.key);if(!it)return null;
+                  const isCustom=it.isCustom;const custCol:any=isCustom?customCols.find(c=>c.key===o.key):null;
+                  return(
+                  <div key={o.key} style={{marginBottom:4}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",
+                      background:o.visible?"rgba(244,114,182,.08)":"rgba(255,255,255,.03)",borderRadius:6,opacity:o.visible?1:.5}}>
+                      <input type="checkbox" checked={o.visible} onChange={()=>toggleVisible(setAfterOrder,o.key)} style={{accentColor:"#f472b6"}}/>
+                      {isCustom?
+                        <input value={custCol?.name||""} onChange={e=>updateCustomCol(o.key,"name",e.target.value)}
+                          style={{flex:1,fontSize:12,background:"rgba(0,0,0,.2)",border:"1px solid rgba(244,114,182,.3)",borderRadius:4,color:"var(--text)",padding:"3px 6px"}}/>
+                        :<span style={{flex:1,fontSize:12,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</span>}
+                      {isCustom&&<input type="number" value={custCol?.max||0} onChange={e=>updateCustomCol(o.key,"max",Number(e.target.value)||0)}
+                        style={{width:44,fontSize:12,background:"rgba(0,0,0,.2)",border:"1px solid rgba(244,114,182,.3)",borderRadius:4,color:"var(--text)",padding:"3px 4px",textAlign:"center"}}/>}
+                      <button onClick={()=>moveOrder(setAfterOrder,i,-1)} disabled={i===0} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===0?"default":"pointer",opacity:i===0?.3:1,fontSize:14,padding:"0 4px"}}>▲</button>
+                      <button onClick={()=>moveOrder(setAfterOrder,i,1)} disabled={i===afterOrder.length-1} style={{background:"transparent",border:"none",color:"var(--muted2)",cursor:i===afterOrder.length-1?"default":"pointer",opacity:i===afterOrder.length-1?.3:1,fontSize:14,padding:"0 4px"}}>▼</button>
+                      {isCustom&&<button onClick={()=>removeCustomCol(o.key)} style={{background:"transparent",border:"none",color:"var(--red)",cursor:"pointer",fontSize:13,padding:"0 4px"}}>🗑</button>}
+                    </div>
+                    {isCustom&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:4,padding:"6px 8px 2px 20px"}}>
+                      {students.map((s:any)=>(
+                        <div key={s.id} style={{display:"flex",alignItems:"center",gap:4}}>
+                          <span style={{fontSize:10,color:"var(--muted2)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name.split(" ").slice(1).join(" ")}</span>
+                          <input type="number" value={custCol?.scores?.[s.id]??""} placeholder="—" onChange={e=>setCustomScore(o.key,s.id,e.target.value)}
+                            style={{width:40,fontSize:11,background:"rgba(0,0,0,.25)",border:"1px solid rgba(244,114,182,.25)",borderRadius:4,color:"#f472b6",padding:"2px 4px",textAlign:"center"}}/>
+                        </div>
+                      ))}
+                    </div>}
                   </div>
                 );})}
+                <button onClick={()=>addCustomCol("after")} className="btn-ghost" style={{fontSize:11,padding:"6px 12px",marginTop:6,borderColor:"rgba(244,114,182,.4)",color:"#f472b6"}}>➕ เพิ่มคอลัมน์เอง</button>
               </div>
             </div>
-            <div style={{fontSize:11,color:"var(--muted)",marginTop:10}}>💡 ติ๊กออกเพื่อซ่อนคอลัมน์นั้นจากรายงาน (ยอดรวม/เกรดยังคำนวณจากทุกรายการเหมือนเดิม ไม่กระทบคะแนนจริง) กด ▲▼ เพื่อสลับลำดับ</div>
+            <div style={{fontSize:11,color:"var(--muted)",marginTop:10}}>💡 ติ๊กออกเพื่อซ่อนคอลัมน์นั้นจากรายงาน (ยอดรวม/เกรดยังคำนวณจากทุกรายการเหมือนเดิม ไม่กระทบคะแนนจริง) กด ▲▼ เพื่อสลับลำดับ · คอลัมน์ที่เพิ่มเอง แก้ชื่อ/คะแนนเต็ม/กรอกคะแนนได้ตรงนี้เลย (คะแนนนี้ใช้เฉพาะรายงาน ไม่กระทบ XP ในระบบ)</div>
+            <button className="btn-ghost" onClick={exportPPTX} style={{fontSize:13,padding:"9px 20px",marginTop:12,borderColor:"rgba(232,140,74,.5)",color:"var(--orange)"}}>📊 ดาวน์โหลดเป็น PowerPoint (แก้ไขได้)</button>
           </div>
 
           <div id="print-report-area" lang="th" style={{background:"#fff",color:"#000",padding:24,borderRadius:8,overflowX:"auto",fontFamily:"'TH Sarabun PSK',sans-serif",wordBreak:"normal",overflowWrap:"normal",lineBreak:"strict"}}>
@@ -3853,32 +3978,30 @@ const img2 = "https://i.postimg.cc/RVGwSXJh/a8d4de59513d2b1ca0a346c0c7fd039c.jpg
 const img3 = "https://i.postimg.cc/13kXsqB0/wp13416836.png";
 
 
-async function gasGet() {
-  try {
-    const r = await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify({ action: "getAll" })
-    });
+async function gasGet(){
+  try{
+    // GET ไม่ต้องใช้ no-cors — GAS อนุญาต GET ปกติ
+    // ใส่ timestamp กันแคช + cache:"no-store" — กันเบราว์เซอร์หยิบข้อมูลเก่าที่เคย cache ไว้มาโชว์แทนของจริง
+    // (ปัญหา "รีเฟรชธรรมดาแล้วข้อมูลเก่ากลับมา" มักเกิดจากเบราว์เซอร์แคช GET request ไว้)
+    const r=await fetch(GAS_URL+"?action=getAll&_t="+Date.now(),{cache:"no-store"});
     return await r.json();
-  } catch(e) { return null; }
+  }catch(e){
+    console.error("gasGet error:",e);
+    return null;
+  }
 }
 
-
-async function gasSave(action: string, data: any) {
-  try {
-    const r = await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify({ action, data: JSON.stringify(data) })
+async function gasSave(action,data){
+  try{
+    // POST ต้องใช้ no-cors + Content-Type: text/plain
+    await fetch(GAS_URL,{
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify({action,data:JSON.stringify(data)})
     });
-    const res = await r.json();
-    if (res.error) {
-      alert("⚠️ บันทึกข้อมูลผิดพลาด: " + res.error);
-      return { success: false };
-    }
-    return { success: true };
-  } catch(e) {
-    alert("⚠️ เชื่อมต่อ Google ไม่ได้");
-    return { success: false };
+  }catch(e){
+    console.error("gasSave error:",e);
   }
 }
 
@@ -3950,6 +4073,9 @@ async function syncStudentsToSheet(students,assignments){
         submittedAt:sub?.submittedAt||""
       };
     });
+    // XP รายกิจกรรมที่ให้ผ่านหน้า "เพิ่ม XP" (คนละส่วนกับใบงานทางการด้านบน) — ส่งไปด้วยให้ขึ้นเป็นคอลัมน์แยกในชีตอ่านง่ายเหมือนกัน
+    const activityXp={};
+    (s.xpLog||[]).forEach(log=>{ activityXp[log.activity]=log.xp; });
     return{
       id:s.id,
       name:s.name,
@@ -3960,7 +4086,8 @@ async function syncStudentsToSheet(students,assignments){
       rank:getRank(getEffectiveXP(s,assignments)).label,
       midterm:s.midterm,
       final:s.final,
-      submissionLinks
+      submissionLinks,
+      activityXp
     };
   });
   await gasSave("saveStudentsDetailed",rows);
@@ -4040,29 +4167,49 @@ export default function App(){
 
   // debounce save — รอ 1 วินาทีหลังเปลี่ยนค่า
   // ⚠️ เซฟกลับ Sheet ของแต่ละชุดข้อมูล ต้องรอให้ "ชุดนั้นๆ" ยืนยันว่าดึงมาสำเร็จแล้วเท่านั้น (ไม่ใช่แค่ dataLoadOk ภาพรวม) กันข้อมูลหาย
+  // ── ธงบอกว่า "กำลังมีการบันทึกค้างอยู่หรือรอคิวอยู่" — ใช้เตือนก่อนปิดหน้าเว็บ กันกรณีแก้เสร็จแล้วรีบปิด/สลับแท็บก่อนบันทึกเสร็จ (ภายใน 1 วิ) แล้วข้อมูลหายเงียบๆ
+  const pendingSaveRef=useRef(0); // นับจำนวนงานบันทึกที่ "ตั้งคิวไว้แต่ยังไม่เสร็จ" (เผื่อมีหลายชุดพร้อมกัน)
+  useEffect(()=>{
+    function handleBeforeUnload(e:BeforeUnloadEvent){
+      if(pendingSaveRef.current>0){
+        e.preventDefault();
+        e.returnValue="ยังมีการบันทึกข้อมูลค้างอยู่ — ถ้าปิดตอนนี้อาจมีข้อมูลบางส่วนไม่ถูกบันทึก";
+        return e.returnValue;
+      }
+    }
+    window.addEventListener("beforeunload",handleBeforeUnload);
+    return ()=>window.removeEventListener("beforeunload",handleBeforeUnload);
+  },[]);
   useEffect(()=>{
     if(!loaded||!studentsLoadOk)return;
     clearTimeout(saveTimerStudents.current);
+    pendingSaveRef.current++;
     saveTimerStudents.current=setTimeout(async()=>{
-      if(skipAutoSaveRef.current){skipAutoSaveRef.current=false;return;}
-      await gasSave("saveStudents",students);
-      await syncStudentsToSheet(students,assignments);
+      try{
+        if(skipAutoSaveRef.current){skipAutoSaveRef.current=false;return;}
+        await gasSave("saveStudents",students);
+        await syncStudentsToSheet(students,assignments);
+      } finally { pendingSaveRef.current=Math.max(0,pendingSaveRef.current-1); }
     },1000);
   },[students,loaded,studentsLoadOk]);
 
   useEffect(()=>{
     if(!loaded||!assignmentsLoadOk)return;
     clearTimeout(saveTimerAssignments.current);
-    saveTimerAssignments.current=setTimeout(()=>{
-      gasSave("saveAssignments",assignments);
+    pendingSaveRef.current++;
+    saveTimerAssignments.current=setTimeout(async()=>{
+      try{ await gasSave("saveAssignments",assignments); }
+      finally{ pendingSaveRef.current=Math.max(0,pendingSaveRef.current-1); }
     },1000);
   },[assignments,loaded,assignmentsLoadOk]);
 
   useEffect(()=>{
     if(!loaded||!resourcesLoadOk)return;
     clearTimeout(saveTimerResources.current);
-    saveTimerResources.current=setTimeout(()=>{
-      gasSave("saveResources",resources);
+    pendingSaveRef.current++;
+    saveTimerResources.current=setTimeout(async()=>{
+      try{ await gasSave("saveResources",resources); }
+      finally{ pendingSaveRef.current=Math.max(0,pendingSaveRef.current-1); }
     },1000);
   },[resources,loaded,resourcesLoadOk]);
 
