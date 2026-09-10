@@ -79,7 +79,7 @@ const CHAPTERS = [
   {id:"CH1",label:"หน่วยที่ 1",title:"วิทยาศาสตร์กับการแก้ปัญหา",icon:"🔬",color:"#7de8d0",bg:"rgba(125,232,208,.06)"},
   {id:"CH2",label:"หน่วยที่ 2",title:"พันธุศาสตร์",icon:"🧬",color:"#c060e0",bg:"rgba(192,96,224,.06)"},
   {id:"CH3",label:"หน่วยที่ 3",title:"คลื่นและแสง",icon:"🌊",color:"#f0a0c0",bg:"rgba(240,160,192,.06)"},
-  {id:"CH4",label:"หน่วยที่ 4",title:"ปฏิสัมพันธ์ในระบบสุริยะ",icon:"🌌",color:"#f5cc70",bg:"rgba(245,204,112,.06)"},
+  {id:"CH4",label:"หน่วยที่ 4",title:"ระบบสุริยะของเรา",icon:"🌌",color:"#f5cc70",bg:"rgba(245,204,112,.06)"},
 ];
 
 const XP_RANKS = [
@@ -1077,7 +1077,13 @@ function ScoreBreakdown({student, assignments}){
 function StudentDashboard({student,students,assignments,setPage,setStudents}){
   const effXP=getEffectiveXP(student,assignments);
   const rank=getRank(effXP);
-  const submitted=Object.keys(student.submissions||{}).length;
+  // นับ "ส่งแล้ว/ค้างส่ง" อ้างอิงชุดรายการเดียวกับหน้า "ส่งงาน" เป๊ะ (รวมทั้งใบงานที่ต้องส่งไฟล์/ลิงก์ และกิจกรรมในห้องที่ครูให้ XP)
+  const allActNamesD=[...new Set((students||[]).flatMap((st:any)=>(st.xpLog||[]).map((l:any)=>l.activity)))];
+  const totalItemsD=(assignments||[]).length+allActNamesD.length;
+  const doneItemsD=(assignments||[]).filter((a:any)=>student.submissions?.[a.id]).length
+    +allActNamesD.filter((name:any)=>(student.xpLog||[]).some((l:any)=>l.activity===name)).length;
+  const submitted=doneItemsD;
+  const pendingCount=totalItemsD-doneItemsD;
   const [pwModal,setPwModal]=useState(false);
   const [oldPw,setOldPw]=useState("");const [newPw,setNewPw]=useState("");const [cnf,setCnf]=useState("");const [pwMsg,setPwMsg]=useState(null);
   function changePw(){
@@ -1137,7 +1143,7 @@ function StudentDashboard({student,students,assignments,setPage,setStudents}){
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8}}>
             <div className="card" style={{textAlign:"center",padding:12}}><div style={{fontSize:22,marginBottom:4}}>📋</div><div className="cond" style={{fontSize:28,fontWeight:700,color:"var(--cyan)"}}>{submitted}</div><div style={{fontSize:11,color:"var(--muted)"}}>ส่งแล้ว</div></div>
-            <div className="card" style={{textAlign:"center",padding:12}}><div style={{fontSize:22,marginBottom:4}}>⏳</div><div className="cond" style={{fontSize:28,fontWeight:700,color:"var(--orange)"}}>{assignments.length-submitted}</div><div style={{fontSize:11,color:"var(--muted)"}}>ค้างส่ง</div></div>
+            <div className="card" style={{textAlign:"center",padding:12}}><div style={{fontSize:22,marginBottom:4}}>⏳</div><div className="cond" style={{fontSize:28,fontWeight:700,color:"var(--orange)"}}>{pendingCount}</div><div style={{fontSize:11,color:"var(--muted)"}}>ค้างส่ง</div></div>
           </div>
         </div>
         <Top3Card students={students} assignments={assignments}/>
