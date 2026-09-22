@@ -1789,6 +1789,37 @@ function TeacherStudents({students,assignments,setStudents,studentsLoadOk}){
     if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     setStudents((prev:any)=>prev.map((st:any)=>st.id===studentId?{...st,gradeOverride:value||null}:st));
   }
+  // จัดการ "เลขที่" (เลขที่นั่ง/เลขในห้อง) — แยกต่างหากจากเลขประจำตัว ใช้เรียงลำดับรายงานคะแนน
+  const [rollMode,setRollMode]=useState(false);
+  const [rollRoom,setRollRoom]=useState("r1");
+  function setRollNo(studentId:string,value:string){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
+    setStudents((prev:any)=>prev.map((st:any)=>st.id===studentId?{...st,rollNo:value===""?null:value}:st));
+  }
+  // วางลิสต์เลขที่ทีเดียว (ตัดจาก Excel/Sheets มาได้ตรงๆ) — จับคู่ด้วย "เลขประจำตัว" เท่านั้น (ชื่อไม่ใช้จับคู่ เพราะเว้นวรรค/สะกดอาจไม่ตรงเป๊ะ)
+  const [pasteRoll,setPasteRoll]=useState("");
+  function applyPasteRoll(){
+    if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
+    const lines=pasteRoll.split("\n").map(l=>l.trim()).filter(Boolean);
+    const parsed:{rollNo:string,password:string}[]=[];
+    for(const line of lines){
+      let parts=line.split(/\t+/).map(c=>c.trim()).filter(c=>c!=="");
+      if(parts.length<2)parts=line.split(/\s+/).filter(c=>c!=="");
+      if(parts.length<2)continue;
+      const[rollNo,password]=parts;
+      if(!/^\d+$/.test(rollNo)||!/^\d+$/.test(password))continue; // ข้ามแถวหัวตาราง/บรรทัดอ่านไม่ได้
+      parsed.push({rollNo,password});
+    }
+    if(parsed.length===0){alert("อ่านข้อมูลไม่ได้ครับ — ต้องมี \"เลขที่\" กับ \"เลขประจำตัว\" เป็น 2 คอลัมน์แรกของแต่ละแถว (คั่นด้วย tab หรือเว้นวรรค)");return;}
+    let matched=0;
+    setStudents((prev:any)=>prev.map((st:any)=>{
+      const found=parsed.find(p=>p.password===String(st.password));
+      if(found){matched++;return{...st,rollNo:found.rollNo};}
+      return st;
+    }));
+    setTimeout(()=>alert(`ตั้งเลขที่ให้แล้ว ${matched} คน จากทั้งหมด ${parsed.length} แถวที่วางมา${matched<parsed.length?` (อีก ${parsed.length-matched} แถวหาเลขประจำตัวที่ตรงกันในระบบไม่เจอ)`:""}`),50);
+    setPasteRoll("");
+  }
   function removeAirdrop(studentId,idx){
     if(!studentsLoadOk){alert("⚠️ ยังโหลดข้อมูลนักเรียนจริงจากระบบไม่สำเร็จ กรุณารีเฟรชหน้าเว็บใหม่ก่อนแก้ไข (เพื่อป้องกันข้อมูลเสียหาย)");return;}
     setStudents(prev=>{
@@ -2050,9 +2081,39 @@ function TeacherStudents({students,assignments,setStudents,studentsLoadOk}){
   );
   return(
     <div className="fade-up" style={{padding:20,maxWidth:900,margin:"0 auto"}}>
-      <div style={{marginBottom:20}}>
+      <div style={{marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
         <div className="mono" style={{fontSize:10,color:"var(--muted)",letterSpacing:3}}>PLAYER ROSTER</div>
+        <button className="btn-ghost" onClick={()=>setRollMode(!rollMode)} style={{fontSize:12,padding:"7px 14px",borderColor:"rgba(94,200,126,.4)",color:"var(--green)"}}>
+          {rollMode?"← กลับไปดูรายชื่อ":"📋 จัดการเลขที่"}
+        </button>
       </div>
+      {rollMode?(
+        <div className="card">
+          <div style={{marginBottom:16,padding:12,background:"rgba(94,200,126,.06)",border:"1px solid rgba(94,200,126,.25)",borderRadius:8}}>
+            <div className="mono" style={{fontSize:9,color:"var(--muted)",letterSpacing:1,marginBottom:6}}>📋 วางลิสต์ทีเดียว (ตัดจาก Excel/Sheets มาได้เลย) — คอลัมน์แรกต้องเป็นเลขที่ คอลัมน์ 2 ต้องเป็นเลขประจำตัว</div>
+            <textarea value={pasteRoll} onChange={e=>setPasteRoll(e.target.value)} placeholder={"1\t18964\t...\n2\t18965\t...\n3\t18967\t..."}
+              rows={4} style={{width:"100%",background:"rgba(10,20,38,.8)",border:"1px solid rgba(94,200,126,.35)",color:"var(--text)",borderRadius:6,padding:"8px 10px",fontSize:12,fontFamily:"'Share Tech Mono',monospace",resize:"vertical"}}/>
+            <button className="btn-ghost" onClick={applyPasteRoll} style={{fontSize:12,padding:"7px 16px",marginTop:8,borderColor:"rgba(94,200,126,.5)",color:"var(--green)"}}>✅ นำเข้าเลขที่</button>
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            <button className="btn-ghost" onClick={()=>setRollRoom("r1")} style={{fontSize:12,padding:"6px 14px",borderColor:rollRoom==="r1"?"rgba(240,160,192,.6)":"var(--border)",color:rollRoom==="r1"?"#f0a0c0":"var(--muted2)"}}>🌸 ม.3/1</button>
+            <button className="btn-ghost" onClick={()=>setRollRoom("r2")} style={{fontSize:12,padding:"6px 14px",borderColor:rollRoom==="r2"?"rgba(125,232,208,.6)":"var(--border)",color:rollRoom==="r2"?"#7de8d0":"var(--muted2)"}}>🌿 ม.3/2</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"70px 1fr 1fr",gap:0,fontSize:10,color:"var(--muted)",letterSpacing:1,padding:"0 4px 8px",borderBottom:"1px solid var(--border)",marginBottom:6}}>
+            <div>เลขที่</div><div>เลขประจำตัว</div><div>ชื่อ-สกุล</div>
+          </div>
+          {[...students].filter((s:any)=>s.room===rollRoom).sort((a:any,b:any)=>Number(a.password||0)-Number(b.password||0)).map((s:any)=>(
+            <div key={s.id} style={{display:"grid",gridTemplateColumns:"70px 1fr 1fr",gap:0,alignItems:"center",padding:"6px 4px",borderBottom:"1px solid rgba(255,255,255,.05)"}}>
+              <input type="number" defaultValue={s.rollNo??""} placeholder="—" onBlur={e=>setRollNo(s.id,e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter")(e.target as HTMLInputElement).blur();}}
+                style={{width:56,fontSize:13,textAlign:"center",background:"rgba(10,20,38,.8)",border:"1px solid rgba(94,200,126,.4)",color:"var(--green)",borderRadius:5,padding:"5px 8px",fontFamily:"'Share Tech Mono',monospace",outline:"none"}}/>
+              <div className="mono" style={{fontSize:12,color:"var(--muted2)"}}>{s.password}</div>
+              <div style={{fontSize:13,color:"#fff"}}>{s.name}</div>
+            </div>
+          ))}
+          <div style={{fontSize:11,color:"var(--muted)",marginTop:12}}>💡 พิมพ์เลขที่แล้วกด Enter หรือคลิกที่อื่นเพื่อบันทึกอัตโนมัติ ใช้เรียงลำดับในรายงานคะแนนที่พิมพ์/ดาวน์โหลด</div>
+        </div>
+      ):(<>
       {[...students].sort((a:any,b:any)=>getEffectiveXP(b,assignments)-getEffectiveXP(a,assignments)).map((s:any,i:number)=>{
         const sxp=getEffectiveXP(s,assignments);const r=getRank(sxp);
         return(
@@ -2072,6 +2133,7 @@ function TeacherStudents({students,assignments,setStudents,studentsLoadOk}){
           <div style={{color:"var(--muted)",cursor:"pointer"}} onClick={()=>setSel(s.id)}>›</div>
         </div>
       );})}
+      </>)}
     </div>
   );
 }
@@ -3281,7 +3343,16 @@ function TeacherGrades({students,setStudents,assignments,studentsLoadOk}){
   const rFinal=(s:any)=>s.final??0;
   const rGrand=(s:any)=>rBefore(s)+rMid(s)+rAfter(s)+rFinal(s);
   const rGradeOf=(s:any)=>s.gradeOverride?normalizeOverrideOfficial(s.gradeOverride):getGrade(rGrand(s));
-  const reportStudents=[...filteredG].sort((a:any,b:any)=>Number(a.password||0)-Number(b.password||0));
+  // เรียงตามเลขที่ (ไม่ใช่เลขประจำตัวเหมือนเดิม) — ม.3 มี 2 ห้อง ต้องเรียงห้อง 1 ให้ครบก่อนแล้วค่อยห้อง 2 เสมอเวลาดูรวมทุกห้อง
+  const reportStudents=[...filteredG].sort((a:any,b:any)=>{
+    const roomOrder=(r:string)=>r==="r1"?0:1;
+    const ra=roomOrder(a.room),rb=roomOrder(b.room);
+    if(ra!==rb)return ra-rb;
+    const na=a.rollNo!=null&&a.rollNo!==""?Number(a.rollNo):9999;
+    const nb=b.rollNo!=null&&b.rollNo!==""?Number(b.rollNo):9999;
+    if(na!==nb)return na-nb;
+    return Number(a.password||0)-Number(b.password||0); // ยังไม่ได้กรอกเลขที่ → ใช้เลขประจำตัวจัดลำดับสำรองไปก่อน
+  });
   // ─── ส่งออกรายงานเป็นไฟล์ Excel (.xlsx) — เปิดได้ตรงใน Google Sheets เลย (อัปโหลดขึ้น Drive แล้วเปิดด้วย Google Sheets หรือ File > Import) โหลดไลบรารีจาก CDN ตอนกดใช้เท่านั้น ───
   function loadXLSX(){
     return new Promise<any>((resolve,reject)=>{
@@ -3298,16 +3369,16 @@ function TeacherGrades({students,setStudents,assignments,studentsLoadOk}){
     try{ XLSXLib=await loadXLSX(); }
     catch(e){ alert("โหลดไลบรารี Excel ไม่สำเร็จ — เช็คอินเทอร์เน็ตแล้วลองอีกครั้ง"); return; }
     const headerRow=[
-      "ลำดับ","เลขประจำตัว","ชื่อ-สกุล",
+      "เลขที่","เลขประจำตัว","ชื่อ-สกุล",
       ...beforeShown.map((it:any)=>`${it.name} (${it.max})`),
-      "รวมก่อนกลางภาค (35)","สอบกลางภาค (15)","รวมกลางภาค (50)",
+      "รวมก่อนกลางภาค (35)","สอบกลางภาค (15)",
       ...afterShown.map((it:any)=>`${it.name} (${it.max})`),
       "รวมหลังกลางภาค (35)","สอบปลายภาค (15)","รวม (100)","เกรด",
     ];
     const rows=reportStudents.map((s:any,i:number)=>[
-      i+1,s.password,s.name,
+      selRoomG==="all"?(i+1):(s.rollNo??""),s.password,s.name,
       ...beforeShown.map((it:any)=>it.score(s)),
-      rBefore(s),s.midterm??"",rBefore(s)+rMid(s),
+      rBefore(s),s.midterm??"",
       ...afterShown.map((it:any)=>it.score(s)),
       rAfter(s),s.final??"",rGrand(s),rGradeOf(s)??"",
     ]);
@@ -3345,13 +3416,12 @@ function TeacherGrades({students,setStudents,assignments,studentsLoadOk}){
     pptx.defineLayout({name:"WIDE",width:13.33,height:7.5});
     pptx.layout="WIDE";
     const headerCells=[
-      {text:"ลำดับ",options:{bold:true,fill:{color:"F0F0F0"},fontSize:9}},
+      {text:"เลขที่",options:{bold:true,fill:{color:"F0F0F0"},fontSize:9}},
       {text:"เลขประจำตัว",options:{bold:true,fill:{color:"F0F0F0"},fontSize:9}},
       {text:"ชื่อ-สกุล",options:{bold:true,fill:{color:"F0F0F0"},fontSize:9}},
       ...beforeShown.map((it:any)=>({text:`${it.name} (${it.max})`,options:{bold:true,fill:{color:"F3E8FF"},fontSize:8}})),
       {text:"รวม",options:{bold:true,fill:{color:"E9D5FF"},fontSize:9}},
       {text:"สอบกลางภาค (15)",options:{bold:true,fill:{color:"E0F2FE"},fontSize:9}},
-      {text:"รวมกลางภาค (50)",options:{bold:true,fill:{color:"BFDBFE"},fontSize:9}},
       ...afterShown.map((it:any)=>({text:`${it.name} (${it.max})`,options:{bold:true,fill:{color:"FCE7F3"},fontSize:8}})),
       {text:"รวม",options:{bold:true,fill:{color:"FBCFE8"},fontSize:9}},
       {text:"สอบปลายภาค (15)",options:{bold:true,fill:{color:"FEF9C3"},fontSize:9}},
@@ -3360,13 +3430,12 @@ function TeacherGrades({students,setStudents,assignments,studentsLoadOk}){
     ];
     function studentRow(s:any,i:number){
       return[
-        {text:String(i+1),options:{fontSize:8}},
+        {text:String(selRoomG==="all"?(i+1):(s.rollNo??"—")),options:{fontSize:8}},
         {text:String(s.password),options:{fontSize:8}},
         {text:s.name,options:{fontSize:8}},
         ...beforeShown.map((it:any)=>({text:String(it.score(s)),options:{fontSize:8}})),
         {text:String(rBefore(s)),options:{fontSize:8,bold:true}},
         {text:String(s.midterm??"—"),options:{fontSize:8}},
-        {text:String(rBefore(s)+rMid(s)),options:{fontSize:8,bold:true}},
         ...afterShown.map((it:any)=>({text:String(it.score(s)),options:{fontSize:8}})),
         {text:String(rAfter(s)),options:{fontSize:8,bold:true}},
         {text:String(s.final??"—"),options:{fontSize:8}},
@@ -3743,19 +3812,18 @@ function TeacherGrades({students,setStudents,assignments,studentsLoadOk}){
 
           <div id="print-report-area" lang="th" style={{background:"#fff",color:"#000",padding:24,borderRadius:8,overflowX:"auto",fontFamily:"'TH Sarabun PSK',sans-serif",wordBreak:"normal",overflowWrap:"normal",lineBreak:"strict"}}>
             <div style={{textAlign:"center",marginBottom:4,fontSize:18,fontWeight:700}}>{rptSchool}</div>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:16,marginBottom:2}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:18,marginBottom:2}}>
               <span>คะแนนนักเรียน{rptClass} {selRoomG==="all"?"":`(${ROOMS.find((r:any)=>r.id===selRoomG)?.label})`}</span><span>{rptTerm}</span>
             </div>
-            <div style={{textAlign:"left",fontSize:16,marginBottom:14}}>{rptSubject}</div>
+            <div style={{textAlign:"left",fontSize:18,marginBottom:14}}>{rptSubject}</div>
             <table style={{borderCollapse:"collapse",width:"100%",fontSize:16}}>
               <thead>
                 <tr>
-                  <th rowSpan={2} style={rptTh}>ลำดับ</th>
+                  <th rowSpan={2} style={rptTh}>เลขที่</th>
                   <th rowSpan={2} style={rptTh}>เลขประจำตัว</th>
                   <th rowSpan={2} style={{...rptTh,textAlign:"left",whiteSpace:"nowrap"}}>ชื่อ-สกุล</th>
                   <th colSpan={beforeShown.length+2} style={tint(rptTh,rptC.before)}>ก่อนกลางภาค (35)</th>
                   <th rowSpan={2} style={tint(rptTh,rptC.mid)}>สอบกลางภาค (15)</th>
-                  <th rowSpan={2} style={tint(rptTh,rptC.midTot)}>รวมกลางภาค (50)</th>
                   <th colSpan={afterShown.length+1} style={tint(rptTh,rptC.after)}>หลังกลางภาค (35)</th>
                   <th rowSpan={2} style={tint(rptTh,rptC.final)}>สอบปลายภาค (15)</th>
                   <th rowSpan={2} style={tint(rptTh,rptC.grand)}>รวม (100)</th>
@@ -3771,13 +3839,12 @@ function TeacherGrades({students,setStudents,assignments,studentsLoadOk}){
               <tbody>
                 {reportStudents.map((s:any,i:number)=>(
                   <tr key={s.id}>
-                    <td style={rptTd}>{i+1}</td>
+                    <td style={rptTd}>{selRoomG==="all"?(i+1):(s.rollNo??"—")}</td>
                     <td style={rptTd}>{s.password}</td>
                     <td style={{...rptTd,textAlign:"left",whiteSpace:"nowrap"}}>{s.name}</td>
                     {beforeShown.map((it:any)=><td key={it.key} style={tint(rptTd,rptC.before)}>{it.score(s)}</td>)}
                     <td style={tint({...rptTd,fontWeight:700},rptC.beforeTot)}>{rBefore(s)}</td>
                     <td style={tint(rptTd,rptC.mid)}>{s.midterm??"—"}</td>
-                    <td style={tint({...rptTd,fontWeight:700},rptC.midTot)}>{rBefore(s)+rMid(s)}</td>
                     {afterShown.map((it:any)=><td key={it.key} style={tint(rptTd,rptC.after)}>{it.score(s)}</td>)}
                     <td style={tint({...rptTd,fontWeight:700},rptC.afterTot)}>{rAfter(s)}</td>
                     <td style={tint(rptTd,rptC.final)}>{s.final??"—"}</td>
